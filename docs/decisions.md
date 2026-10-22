@@ -227,7 +227,7 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Decided:** `contacts` has CHECKs that `next_action` and `next_action_at` are both set or both null, that `(status, next_action)` is one of the five in-sequence pairs (`new`/`first` … `follow_up_3_sent`/`deactivate`) or a terminal status with no action, and that `segment = role_family || ':' || industry`. `sends` has a CHECK that `idempotency_key = contact_id || ':' || step`.
 **Considered:** leaving these to `transition` (T03) and the seed's invariant checks.
 **Why:** the invariants in the spec are only checked after a run; a CHECK refuses a bad row at the moment it's written, inside the transaction that caused it, so the batch rolls back with the cause in the error. It's the same reasoning as `UNIQUE (contact_id, step)`: a property of the data, not of careful code.
-**Cost:** the pairing of status and next action now lives in two places, `src/lifecycle.ts` and the SQL. Changing the sequence means changing both; the T08 tests fail if they drift apart.
+**Cost:** the pairing of status and next action now lives in two places, `src/lifecycle.ts` and the SQL. Changing the sequence means changing both. `tests/db/schema-drift.test.ts` reads the CHECKs Postgres actually enforces (`pg_get_constraintdef`) and compares them value for value with `STATUSES`, `STEPS`, `LABELS`, `REPLY_LABELS`, `INDUSTRIES`, `ROLE_FAMILIES` and `TERMINAL`, so drift in either direction fails a test. Note for anyone writing these CHECKs: a CHECK that evaluates to NULL passes, which is why the status/next-action rule is a `CASE` (an `IN (...)` with a NULL `next_action` would have let `first_sent` with no next action through).
 
 ## D33 · 2026-10-22 · No real-time defaults on business tables
 
