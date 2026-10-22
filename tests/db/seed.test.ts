@@ -312,6 +312,71 @@ describe('seed with small counts', () => {
   }, 30_000);
 });
 
+describe('seed with unusual settings', () => {
+  const IN_SEQ = `status IN ('first_sent', 'follow_up_1_sent', 'follow_up_2_sent', 'follow_up_3_sent')`;
+
+  it.each(['2026-11-02T23:30:00Z', '2026-11-02T00:10:00Z', '2026-11-02T14:00:00+05:30'])(
+    'SIM_START %s: in-sequence next_action_at stays within SIM_START - 2 days .. SIM_START + wait',
+    async (simStart) => {
+      await resetDb(pool);
+      const cfg = config({ CONTACT_COUNT: '2000', SIM_START: simStart });
+      await seed(pool, cfg);
+      expect(await checkInvariants(pool)).toEqual([]);
+      const t = cfg.simStart;
+      expect(
+        await count(
+          `SELECT count(*) FROM contacts WHERE ${IN_SEQ} AND next_action_at < $1::timestamptz - interval '2 days'`,
+          [t],
+        ),
+      ).toBe(0);
+      expect(
+        await count(
+          `SELECT count(*) FROM contacts c
+             JOIN LATERAL (SELECT step FROM sends WHERE contact_id = c.id ORDER BY sent_at DESC LIMIT 1) s ON true
+            WHERE ${IN_SEQ} AND c.next_action_at > $1::timestamptz + make_interval(days =>
+              ($2::int[])[array_position(ARRAY['first', 'follow_up_1', 'follow_up_2', 'follow_up_3'], s.step)])`,
+          [t, cfg.waitDays],
+        ),
+      ).toBe(0);
+      expect(
+        await count(`SELECT count(*) FROM contacts WHERE ${IN_SEQ} AND next_action_at <= $1`, [t]),
+      ).toBeGreaterThan(0);
+      expect(await count(`SELECT count(*) FROM contacts WHERE ${IN_SEQ} AND next_action_at > $1`, [t])).toBeGreaterThan(
+        0,
+      );
+      expect(await count('SELECT count(*) FROM events WHERE occurred_at >= $1', [t])).toBe(0);
+    },
+    30_000,
+  );
+
+  it('WAIT_DAYS 1,1,1,1: every reply arrives before the next step would have been due', async () => {
+    await resetDb(pool);
+    const cfg = config({ CONTACT_COUNT: '2000', WAIT_DAYS: '1,1,1,1' });
+    await seed(pool, cfg);
+    expect(await checkInvariants(pool)).toEqual([]);
+    expect(
+      await count(
+        `SELECT count(*) FROM replies r JOIN sends s ON s.id = r.send_id
+          WHERE s.step <> 'follow_up_3' AND r.received_at >= s.sent_at + interval '1 day'`,
+      ),
+    ).toBe(0);
+  }, 30_000);
+
+  it('default waits: every reply arrives before the next step would have been due', async () => {
+    await resetDb(pool);
+    const cfg = config({ CONTACT_COUNT: '2000' });
+    await seed(pool, cfg);
+    expect(
+      await count(
+        `SELECT count(*) FROM replies r JOIN sends s ON s.id = r.send_id
+          WHERE s.step <> 'follow_up_3' AND r.received_at >= s.sent_at + make_interval(days =>
+            ($1::int[])[array_position(ARRAY['first', 'follow_up_1', 'follow_up_2', 'follow_up_3'], s.step)])`,
+        [cfg.waitDays],
+      ),
+    ).toBe(0);
+  }, 30_000);
+});
+
 describe('seed with the real 10,000 contacts', () => {
   it('finishes in under 30 seconds and is consistent, with new contacts in daily waves of 1000', async () => {
     await resetDb(pool);
