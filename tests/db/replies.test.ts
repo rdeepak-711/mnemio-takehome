@@ -333,6 +333,14 @@ describe('processReplies: no answer from the AI', () => {
     expect(await replyRow(c.id)).toMatchObject({ label: 'needs_review', label_source: 'fallback' });
   });
 
+  it('a classifier that resolves to something other than a Map gives needs_review (fallback)', async () => {
+    const c = await contact('first_sent');
+    await inbox(c.key('first'), TEXT.interested);
+    const broken = (async () => undefined) as unknown as Classifier;
+    expect(await tick(broken)).toEqual({ processed: 1, rule: 0, ai: 0, fallback: 1 });
+    expect(await replyRow(c.id)).toMatchObject({ label: 'needs_review', label_source: 'fallback' });
+  });
+
   it('a missing answer or an unknown label gives needs_review (fallback)', async () => {
     const a = await contact('first_sent');
     const b = await contact('first_sent');
