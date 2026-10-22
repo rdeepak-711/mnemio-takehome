@@ -43,6 +43,7 @@ const CHECKS: readonly { invariant: number; sql: string }[] = [
   },
   {
     // bounced <=> last send bounced and a bounced suppression row; either sign alone on another status is a break.
+    // unsubscribed may carry both signs together: a late unsubscribe after a bounce wins (D48).
     invariant: 2,
     sql: `
       WITH last AS (
@@ -58,16 +59,27 @@ const CHECKS: readonly { invariant: number; sql: string }[] = [
                AS message
         FROM c
        WHERE (status = 'bounced' AND NOT (last_bounced AND suppressed))
-          OR (status <> 'bounced' AND (last_bounced OR suppressed))
+          OR (status = 'unsubscribed' AND last_bounced <> suppressed)
+          OR (status NOT IN ('bounced', 'unsubscribed') AND (last_bounced OR suppressed))
        ORDER BY id LIMIT $1`,
   },
   {
+    // unsubscribed needs an unsubscribed suppression row, or a bounced one with its last send bounced, since
+    // the suppression row keeps its first reason (D48).
     invariant: 3,
     sql: `
-      SELECT c.id AS contact_id, 'status unsubscribed without an unsubscribed suppression row' AS message
-        FROM contacts c
+      WITH last AS (
+        SELECT DISTINCT ON (contact_id) contact_id, outcome
+          FROM sends ORDER BY contact_id, array_position(${STEP_ORDER}, step) DESC
+      )
+      SELECT c.id AS contact_id,
+             'status unsubscribed without an unsubscribed suppression row (or a bounced one after a bounced send)'
+               AS message
+        FROM contacts c LEFT JOIN last l ON l.contact_id = c.id
        WHERE c.status = 'unsubscribed'
          AND NOT EXISTS (SELECT 1 FROM suppression x WHERE x.email = c.email AND x.reason = 'unsubscribed')
+         AND NOT (coalesce(l.outcome = 'bounced', false)
+                  AND EXISTS (SELECT 1 FROM suppression x WHERE x.email = c.email AND x.reason = 'bounced'))
        ORDER BY c.id LIMIT $1`,
   },
   {
