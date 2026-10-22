@@ -10,8 +10,8 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - ✅ T01 Repo skeleton (package, tsconfig, Vitest, Docker Postgres, pool) → `tasks/T01-skeleton.md`
 
 ## Layer 1 — Pure logic
-- 🗣 T02 Config loader → `tasks/T02-config.md`
-- 🗣 T03 State machine → `tasks/T03-lifecycle.md`
+- ✅ T02 Config loader → `tasks/T02-config.md`
+- ✅ T03 State machine → `tasks/T03-lifecycle.md`
 - ☐ T04 Schedule (next date, OOO delay) → `tasks/T04-schedule.md`
 - ☐ T05 Template render + content check → `tasks/T05-render.md`
 - ☐ T06 Segments (role family) → `tasks/T06-segments.md`
