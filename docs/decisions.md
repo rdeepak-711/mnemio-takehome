@@ -137,3 +137,31 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** bind-mounting `docker/init.sql` (the T01 task file's first version); adding `/Volumes/asus` to Colima's shared folders.
 **Why:** Colima only shares `$HOME` with its VM, so a bind mount from a repo on an external drive arrives as an empty folder and Postgres won't start. A build sends the folder to Docker, so it works from any path on any machine, including an evaluator's. Changing Colima's config would only fix this one laptop.
 **Cost:** one extra file, and editing `init.sql` needs `docker compose down -v` then `up -d --build db` to take effect.
+
+## D20 · 2026-10-22 · An empty setting means "use the default"
+
+**Decided:** in `loadConfig`, an optional variable that is missing, empty or only spaces gets its default. `OPENROUTER_API_KEY` that is empty or only spaces becomes `null`.
+**Considered:** treating an empty value as an error; passing it through as `""`.
+**Why:** `.env` files often have lines like `AI_RPM=`. Passed through, `""` can quietly turn into `0` (`Number("")` is `0`), which is wrong and doesn't fail. Treating it as an error would break the `.env.example` lines that are left blank on purpose (`OPENROUTER_MODELS=`).
+**Cost:** someone who writes `AI_RPM=` expecting it to switch something off silently gets 20. The task file didn't specify this case.
+
+## D21 · 2026-10-22 · Numbers are checked as text before they are converted
+
+**Decided:** whole numbers must match `^-?\d+$` and rates `^-?\d*\.?\d+$` before `Number()` runs. Whole numbers must also be safe integers (`z.number().int()`).
+**Considered:** zod's `z.coerce.number()`, which converts first and checks after.
+**Why:** `Number()` accepts too much. `""` becomes `0`, `"3e0"` becomes `3`, and `"99999999999999999999"` becomes a number JavaScript can't hold exactly. Checking the text first means a typo fails loudly instead of becoming a valid-looking value.
+**Cost:** forms some people might expect to work, such as `1e-2` or `1.` for a rate, are rejected.
+
+## D22 · 2026-10-22 · SIM_START must include a time and a timezone
+
+**Decided:** `SIM_START` must be ISO 8601 with a date, a time and an explicit zone (`Z` or `±hh:mm`), e.g. `2026-11-02T09:00:00Z`.
+**Considered:** `new Date(value)` with a NaN check, which was the first build and matches the task file's "valid ISO date".
+**Why:** review found that `new Date` accepts `1` (as 31 Dec 2000) and `Nov 2 2026`, and reads anything without a zone in the machine's own timezone. The same `.env` would start the simulation at different moments on different laptops, so runs wouldn't be repeatable.
+**Cost:** stricter than the task file says, so `2026-11-02` alone is rejected. An impossible day such as `2026-02-31T09:00:00Z` still gets through and rolls over to 3 March. Fixing that is about 3 lines, left out for time.
+
+## D23 · 2026-10-22 · A label given twice in REPLY_MIX is an error
+
+**Decided:** `REPLY_MIX=interested:0.5,interested:0.5` throws naming `REPLY_MIX`.
+**Considered:** letting the last value win.
+**Why:** a repeated label is almost certainly a typo for another label. Letting the last one win would hide it, and the sum check might not catch it.
+**Cost:** none worth noting. The task file didn't specify this case.

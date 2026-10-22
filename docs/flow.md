@@ -1,6 +1,6 @@
 # Execution flow
 
-**Status: PLANNED.** No code exists yet. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
+**Status: PLANNED, partly built.** T01 (DB pool) and T02 (config) exist; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
 
 ## Entry points
 
@@ -12,6 +12,27 @@
 | `npm run advance -- --days N` | `src/cli.ts` → `src/clock.ts` `advance()` + `tick()` N times | |
 | `npm run report` | `src/cli.ts` → `src/report.ts` `report()` | read-only SQL |
 | Dashboard | `app/**` route handlers `app/api/*/route.ts` | the same `tick()`, `advance()`, `report()` and query functions |
+
+## Startup: settings and the database (built in T01, T02)
+
+Every CLI command and the dashboard will start the same way. Nothing calls these yet; the CLI arrives in T18.
+
+```
+cli command (planned, T18)
+ ├─ loadConfig(process.env)                      src/config.ts:77       (pure)
+ │    ├─ DATABASE_URL required                    src/config.ts:78       throws if missing
+ │    ├─ SIM_START must be ISO with a zone        src/config.ts:81-85    regex ISO_WITH_ZONE :32
+ │    └─ every other variable:
+ │         read(env, NAME, default)              src/config.ts:49       empty or spaces → default
+ │         check(NAME, rule, text)               src/config.ts:40       rules: int() :25, rate :34
+ │         parseWaitDays / parseReplyMix         src/config.ts:54, :61  REPLY_LABELS from src/labels.ts
+ │    → Config object, or an Error naming the bad variable
+ └─ getPool(config.databaseUrl)                  src/db/pool.ts:6       [DB] one cached pg.Pool per URL
+      ... work ...
+    closePool()                                  src/db/pool.ts:17      ends every pool so the process exits
+```
+
+Tests call these directly: `tests/unit/config.test.ts` passes made-up env objects to `loadConfig` (it never reads `.env`), and `tests/db/connection.test.ts` uses `getPool(TEST_DATABASE_URL)`. `vitest.config.ts` loads `.env` if present and defaults `TEST_DATABASE_URL`.
 
 ## One tick: `src/engine/tick.ts` `tick(db, deps)`
 
@@ -51,6 +72,7 @@ tick
 - **Time:** only `src/clock.ts` decides what "now" is. `llm_usage` is the single place that uses real time (OpenRouter counts real days).
 - **No auth, no tenants.** Single local user.
 
-## Touched this session
+## Touched so far
 
-Nothing yet. Documents only.
+- **T01:** `src/db/pool.ts` (`getPool`, `closePool`), `vitest.config.ts`, Docker Postgres on `localhost:5433` (databases `mnemio` and `mnemio_test`).
+- **T02:** `src/labels.ts`, `src/config.ts` (`loadConfig`). Pure logic, no boundary crossed. Not yet called from anywhere except tests.
