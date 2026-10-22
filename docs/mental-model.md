@@ -34,6 +34,14 @@ One function, `transition` in `src/lifecycle.ts`, is the rulebook. You give it w
 
 If something impossible is asked, such as sending follow-up 2 to a contact that hasn't had follow-up 1, the function refuses with an error instead of guessing. That situation can only mean a bug elsewhere, and the error makes the whole send batch roll back so nothing half-done is saved.
 
+## When the next thing is due (built in T04)
+
+Two small date calculations live in `src/schedule.ts`. After an email goes out, `nextActionAt` says when the contact's next action is due: the send time plus that step's wait from `WAIT_DAYS` (3, 5, 7 and 7 days by default). After the fourth email, the "next action" is closing the contact, so the fourth wait is how long we wait for a reply before giving up.
+
+When someone replies "I'm out of office", `oooReschedule` decides the new date. If they said when they're back and that's still ahead, the email waits until the day after. If they didn't say, or the date has already passed, it waits a default number of days (7). Either way, it never makes the email come *earlier* than it was already due.
+
+Neither function looks at the real clock. "Now" is always handed in, because in this system "now" is the simulated clock, not the time on your laptop. That's what lets the same run give the same result on any machine.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.

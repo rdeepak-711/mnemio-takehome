@@ -1,6 +1,6 @@
 # Execution flow
 
-**Status: PLANNED, partly built.** T01 (DB pool), T02 (config) and T03 (lifecycle) exist; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
+**Status: PLANNED, partly built.** T01 (DB pool), T02 (config), T03 (lifecycle) and T04 (schedule) exist; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
 
 ## Entry points
 
@@ -47,7 +47,7 @@ tick
  │    │    ├─ limiter.acquire                    src/ai/limiter.ts      [DB: llm_usage]
  │    │    └─ client.chat (retry → next model → fallback)  src/ai/client.ts
  │    └─ apply label → transition(status, event) src/lifecycle.ts       (pure)
- │                     oooReschedule(...)        src/schedule.ts        (pure)
+ │                     oooReschedule(...)        src/schedule.ts:22     (pure, BUILT T04)
  ├─ deactivateDue(db, now)                       src/engine/deactivate.ts [DB]
  └─ sendDue(db, now, deps)  (loop until none due) src/engine/send.ts
       └─ per batch, ONE TRANSACTION:
@@ -60,7 +60,7 @@ tick
              provider.send({idempotencyKey,…})   src/mock/provider.ts   [BOUNDARY: own DB connection = "external"]
              INSERT sends ON CONFLICT DO NOTHING [DB: UNIQUE (contact_id, step)]
              transition(status, sent:<step>)     src/lifecycle.ts:105   (pure, BUILT T03; throws InvalidTransitionError)
-             nextActionAt(step, sentAt, waits)   src/schedule.ts        (pure)
+             nextActionAt(step, sentAt, waits)   src/schedule.ts:17     (pure, BUILT T04)
              UPDATE contacts; INSERT events      [DB]
            COMMIT
 ```
@@ -77,3 +77,4 @@ tick
 - **T01:** `src/db/pool.ts` (`getPool`, `closePool`), `vitest.config.ts`, Docker Postgres on `localhost:5433` (databases `mnemio` and `mnemio_test`).
 - **T02:** `src/labels.ts`, `src/config.ts` (`loadConfig`). Pure logic, no boundary crossed. Not yet called from anywhere except tests.
 - **T03:** `src/lifecycle.ts`: `transition` (:105) switches on the event; replies go to `applyReply` (:84); `expectedStep` (:62) reads the `EXPECTED_STEP` table (:42); a valid send copies its row from `AFTER_SENT` (:55). Imports only `./labels`. Planned callers: `src/engine/send.ts` (T13) after each send, `src/engine/replies.ts` (T14) after a reply is labelled, `src/engine/deactivate.ts` (T15). Not called from anywhere except tests yet.
+- **T04:** `src/schedule.ts`: `nextActionAt` (:17) picks the wait for the step from `WAIT_INDEX` (:6) and adds it with `addDays` (:13); `oooReschedule` (:22) picks `returnDate + 1 day` if that's after `now`, else `now + defaultDays`, then takes the later of that and the current due date. Imports only `type Step`. Never reads the real clock (a test checks the source). Planned callers: `src/engine/send.ts` (T13) after a send, `src/engine/replies.ts` (T14) for out-of-office. Not called from anywhere except tests yet.
