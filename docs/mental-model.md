@@ -26,6 +26,14 @@ Two details matter later. The start time of the simulation must include a timezo
 
 The four kinds of reply a contact can send back (interested, not interested, out of office, unsubscribe) are written down once, in `src/labels.ts`. A classifier can give a fifth answer, "needs review", meaning a human should look. Every part of the code takes these words from that one file, so a misspelling anywhere is caught by TypeScript before the code runs.
 
+## The rulebook for where a contact is (built in T03)
+
+Every contact is always in exactly one of 9 statuses. Five mean "still in the sequence": `new` (nothing sent yet), `first_sent`, and `follow_up_1_sent` to `follow_up_3_sent`. Four mean "finished, never email again": `replied`, `bounced`, `unsubscribed`, `deactivated`.
+
+One function, `transition` in `src/lifecycle.ts`, is the rulebook. You give it where a contact is and what just happened (an email was sent, it bounced, a reply came in with a label, or the final wait ran out) and it tells you where the contact is now and what it waits for next. No other part of the code changes a status on its own; they all ask this function. The main rules: emails go strictly in order, one step at a time; "unsubscribe" always wins, from any status; an out-of-office reply leaves everything as it is and only pushes the date back (that part is done by the schedule code, T04); any real reply stops the sequence, including one the classifier isn't sure about; a contact that was deactivated for not answering can still reply and become `replied`, but one that bounced or unsubscribed stays that way.
+
+If something impossible is asked, such as sending follow-up 2 to a contact that hasn't had follow-up 1, the function refuses with an error instead of guessing. That situation can only mean a bug elsewhere, and the error makes the whole send batch roll back so nothing half-done is saved.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
@@ -33,4 +41,5 @@ The four kinds of reply a contact can send back (interested, not interested, out
 - **Suppression list:** addresses that must never be emailed again (unsubscribed or bounced).
 - **Idempotency key:** a label that is unique per email ("contact 812, follow-up 1"), so sending it twice can be detected and ignored.
 - **Environment variable:** a named setting given to the program from outside its code, e.g. `WAIT_DAYS=3,5,7,7`.
+- **Terminal status:** a finished status (`replied`, `bounced`, `unsubscribed`, `deactivated`); no more emails are ever sent.
 - **Fallback:** the simpler option used when the AI fails or the quota is used up.

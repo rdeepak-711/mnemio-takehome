@@ -23,7 +23,9 @@ type Env = Record<string, string | undefined>;
 // Strict text checks run before Number(), so '', '1.5', 'x' and '3e0' never coerce.
 // z.number().int() also rejects values beyond Number.MAX_SAFE_INTEGER.
 const int = (min = -Infinity, max = Infinity) =>
-  z.string().trim()
+  z
+    .string()
+    .trim()
     .regex(/^-?\d+$/, 'expected an integer')
     .transform(Number)
     .pipe(z.number().int().min(min).max(max));
@@ -31,7 +33,9 @@ const int = (min = -Infinity, max = Infinity) =>
 // ISO 8601 with date, time and an explicit zone, so the result never depends on the machine's timezone.
 const ISO_WITH_ZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 
-const rate = z.string().trim()
+const rate = z
+  .string()
+  .trim()
   .regex(/^-?\d*\.?\d+$/, 'expected a number')
   .transform(Number)
   .pipe(z.number().min(0).max(1));
@@ -98,7 +102,10 @@ export function loadConfig(env: Env): Config {
     oooDefaultDays: check('OOO_DEFAULT_DAYS', int(1), read(env, 'OOO_DEFAULT_DAYS', '7')),
     sendBatchSize: check('SEND_BATCH_SIZE', int(1), read(env, 'SEND_BATCH_SIZE', '200')),
     openrouterApiKey: env.OPENROUTER_API_KEY?.trim() || null,
-    openrouterModels: read(env, 'OPENROUTER_MODELS', '').split(',').map((s) => s.trim()).filter(Boolean),
+    openrouterModels: read(env, 'OPENROUTER_MODELS', '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
     aiRpm: check('AI_RPM', int(1), read(env, 'AI_RPM', '20')),
     dailyAiBudget: check('DAILY_AI_BUDGET', int(0), read(env, 'DAILY_AI_BUDGET', '45')),
   };
