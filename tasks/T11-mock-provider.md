@@ -52,6 +52,13 @@ export function createProvider(pool: pg.Pool, config: Pick<Config, 'seed' | 'bou
 - `mock_outbox.received_at = now`. No real clock anywhere (the no-real-clock scan covers `src/mock/`).
 - `subject` and `body` are accepted but not used.
 
+## Part 3 — late replies to follow-up 3 (added 23 Oct, D44)
+
+So that "a deactivated contact can still reply" actually happens in a run:
+- `export const LATE_REPLY_SHARE = 0.1;` in `src/mock/provider.ts`, and the provider config also takes `waitDays` (`Pick<Config, 'seed' | 'bounceRate' | 'replyRate' | 'replyMix' | 'waitDays'>`).
+- Only when the idempotency key's step (the part after the last `:`) is `follow_up_3`: if `draw(seed, 'late', key) < LATE_REPLY_SHARE`, the delay is `waitDays[3] + 1` to `waitDays[3] + 14` days (whole minutes, `draw(seed, 'delay', key)`) instead of 12–72 hours. The reply then arrives after the contact has been deactivated.
+- Every other step, and the other 90% of follow-up 3 replies, keep 12–72 hours. Labels, texts and OOO details are chosen exactly as before.
+
 ## Edge cases (each one a test)
 
 **Unit (`tests/unit/mock-replies.test.ts`):**
@@ -75,6 +82,7 @@ export function createProvider(pool: pg.Pool, config: Pick<Config, 'seed' | 'bou
 - Rules never mislabel any generated inbox row (`classifyByRules(row, deliver_at)` is `null` or `true_label`), and ambiguous texts do get generated.
 - Order doesn't matter: 300 keys sent in order, then (after a reset) shuffled and 10 at a time → identical outbox and inbox contents (ignoring inbox `id`).
 - A different seed → different outcomes.
+- Late replies: 2,000 `follow_up_3` sends with `REPLY_RATE=1` → about 10% (± 3 points) arrive later than `waitDays[3]` days, all within `waitDays[3] + 1 … + 14` days; the rest within 12–72 h. With `WAIT_DAYS=3,5,7,2` the late ones are 3–16 days. `first`, `follow_up_1` and `follow_up_2` replies are never late.
 
 ## Tests that prove it
 

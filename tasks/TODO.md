@@ -4,7 +4,7 @@ Status: ☐ not started · 🧪 tests written (failing) · 🔨 junior building 
 
 Loop per task: harness engineer writes `T0x-*.md` + failing tests → junior makes them pass → review against the task file → Deepak answers the explain-back questions (1 for Layer 1 tasks T02–T07, 3 for everything else) → commit on branch `t0x-<name>` → merge to `main`.
 
-Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished and submittable by Fri 23 Oct night.** Order: engine T01–T20 → plain dashboard (KPIs, contacts, controls) → T22 → the visual "orchestration" view (animated funnel, day slider, journey of sends/bounces/replies) last → T23 README. If time runs short, T21b extras go first, then T22.
+Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished and submittable by Fri 23 Oct night.** Order: engine T01–T20 → plain dashboard (KPIs, contacts, controls) → T22 → the visual "orchestration" view (animated funnel, day slider, journey of sends/bounces/replies) last → T23 README. Nothing is dropped (Deepak, 23 Oct): all tasks including T21b and T22 get built. Vikrant's real deadline is 5 days from receipt (21 Oct 19:53) = Mon 26 Oct ~19:53; 23 Oct was a self-set target.
 
 ## Layer 0 — Skeleton
 - ✅ T01 Repo skeleton (package, tsconfig, Vitest, Docker Postgres, pool) → `tasks/T01-skeleton.md`
@@ -21,7 +21,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - ✅ T08 Schema + migrations → `tasks/T08-schema.md`
 - ✅ T09 Simulated clock → `tasks/T09-clock.md`
 - ✅ T10 Seed 10k with consistent history
-- 🗣 T11 Mock provider (bounces, replies with true label, idempotency)
+- ✅ T11 Mock provider (bounces, replies with true label, idempotency)
 
 ## Layer 3 — Engine
 - ☐ T12 Claim with SKIP LOCKED

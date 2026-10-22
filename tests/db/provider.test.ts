@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getPool, closePool } from '../../src/db/pool';
 import { resetDb } from '../../src/db/migrate';
 import { loadConfig } from '../../src/config';
-import { createProvider, OOO_HEADERS, type SendInput } from '../../src/mock/provider';
+import { createProvider, LATE_REPLY_SHARE, OOO_HEADERS, type SendInput } from '../../src/mock/provider';
 import { REPLY_BANK, RETURN_DATE_TOKEN } from '../../src/mock/replies';
 import { classifyByRules, findReturnDate } from '../../src/classify/rules';
 import { REPLY_LABELS } from '../../src/labels';
@@ -304,4 +304,61 @@ describe('an outside service', () => {
     }
     expect(await outbox()).toHaveLength(1);
   });
+});
+
+describe('late replies to follow-up 3', () => {
+  const delayDays = (r: InboxRow) => (r.deliver_at.getTime() - NOW.getTime()) / DAY_MS;
+
+  it('LATE_REPLY_SHARE is 10%', () => {
+    expect(LATE_REPLY_SHARE).toBe(0.1);
+  });
+
+  it('about 10% of follow_up_3 replies arrive after the deactivation wait, within wait+1 .. wait+14 days', async () => {
+    await sendAll(
+      provider({ REPLY_RATE: '1', BOUNCE_RATE: '0' }),
+      range(2000).map((i) => input(i, 'follow_up_3')),
+      50,
+    );
+    const rows = await inbox();
+    expect(rows).toHaveLength(2000);
+    const late = rows.filter((r) => delayDays(r) > 7);
+    expect(late.length / rows.length).toBeGreaterThan(0.07);
+    expect(late.length / rows.length).toBeLessThan(0.13);
+    for (const r of late) {
+      expect(delayDays(r)).toBeGreaterThanOrEqual(8);
+      expect(delayDays(r)).toBeLessThanOrEqual(21);
+    }
+    for (const r of rows.filter((x) => delayDays(x) <= 7)) {
+      expect(delayDays(r)).toBeGreaterThanOrEqual(0.5);
+      expect(delayDays(r)).toBeLessThanOrEqual(3);
+    }
+    for (const label of REPLY_LABELS) expect(late.some((r) => r.true_label === label)).toBe(true);
+  }, 60_000);
+
+  it('follows the last wait: WAIT_DAYS=3,5,7,2 → late replies arrive 3–16 days later', async () => {
+    await sendAll(
+      provider({ REPLY_RATE: '1', BOUNCE_RATE: '0', WAIT_DAYS: '3,5,7,2' }),
+      range(1000).map((i) => input(i, 'follow_up_3')),
+      50,
+    );
+    const late = (await inbox()).filter((r) => delayDays(r) > 3);
+    expect(late.length).toBeGreaterThan(50);
+    for (const r of late) {
+      expect(delayDays(r)).toBeGreaterThanOrEqual(3);
+      expect(delayDays(r)).toBeLessThanOrEqual(16);
+    }
+  }, 60_000);
+
+  it.each(['first', 'follow_up_1', 'follow_up_2'])(
+    '%s replies are never late',
+    async (step) => {
+      await sendAll(
+        provider({ REPLY_RATE: '1', BOUNCE_RATE: '0' }),
+        range(500).map((i) => input(i, step)),
+        50,
+      );
+      for (const r of await inbox()) expect(delayDays(r)).toBeLessThanOrEqual(3);
+    },
+    60_000,
+  );
 });

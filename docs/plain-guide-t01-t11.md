@@ -152,6 +152,8 @@ One function, `transition`, is the rulebook. You tell it where a person is and w
 
 **It behaves like an outside company.** It keeps its own records on its own database connection. If the engine crashes after the company accepted an email but before saving it, the company still remembers. When the engine retries, the company recognises the label, gives the same answer and creates nothing new, so the person gets one email, not two.
 
+**Late replies.** About 10% of replies to the last follow-up arrive late, after the person has already been given up on, so the rule "someone we gave up on can still reply" actually happens in a run.
+
 **The reply bank.** Replies come from written texts for each kind of reply, including deliberately tricky ones ("Not right now, maybe next quarter", "Who gave you my address?") meant for the AI. Most holiday replies carry the "sent automatically" stamp and a return date in a form the clerk (T07) can read; some don't, to test the fallbacks. A check makes sure the clerk never gives any of these texts a wrong label: it either gets them right or says "not sure".
 
 **A risk found for later.** The company and the engine currently share one set of 10 database connections. A probe showed that when all 10 are held by engine workers, the company waits forever for one. The fix belongs to T13: the company gets its own set of connections (decision D43).
