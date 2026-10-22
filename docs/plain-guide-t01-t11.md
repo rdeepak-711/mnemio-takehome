@@ -1,6 +1,6 @@
-# What T01–T07 built, in plain words
+# What T01–T11 built, in plain words
 
-This is the first half of the foundation: no emails are sent yet, no database tables exist yet. What exists is the workshop (T01) and six small rulebooks (T02–T07) that the rest of the system will follow. Each rulebook is a "pure" piece of code: you give it something, it gives you an answer, and it never touches the database, the internet or the clock. That makes each one quick to test thoroughly — 336 automatic checks run in under a second.
+This is the whole foundation, built before the engine that actually runs the campaign. It comes in two layers. First the workshop (T01) and six small rulebooks (T02–T07): "pure" pieces of code that take something and give an answer without touching the database, the internet or the clock, so each is quick to test thoroughly. Then the parts that do touch the database (T08–T11): the filing cabinet, the pretend calendar, the starting crowd of 10,000 people, and the pretend email company. Nothing sends emails on its own yet; that's the engine, Layer 3. 528 automatic checks cover all of it.
 
 ## The big picture first
 
@@ -17,6 +17,10 @@ Think of it as a small post office:
 | T05 | The letter template and the proofreader | Fills in names, then checks the letter before it goes out |
 | T06 | The sorting into groups | Puts people into 20 groups so the AI writes 20 letters, not 10,000 |
 | T07 | The mail-room clerk | Sorts the obvious replies (holiday, unsubscribe) without the AI |
+| T08 | The filing cabinet | The database tables, and the rules that refuse impossible paperwork |
+| T09 | The wall calendar | The simulation's "today", which only moves when told to |
+| T10 | The starting crowd, and the inspector | 10,000 made-up people with a believable past, and a checker for the whole cabinet |
+| T11 | The other post office | A pretend email company that accepts, bounces and replies |
 
 ## T01 — The workshop
 
@@ -104,11 +108,59 @@ One function, `transition`, is the rulebook. You tell it where a person is and w
 
 **The golden rule: "not sure" beats a guess.** A wrong guess can't be undone — unsubscribing someone who wanted to stay, or emailing someone on the last day of their holiday. "Not sure" costs one AI look, or a short wait, and if the AI has no requests left that day the reply is marked for a human. Review found two inputs where the clerk guessed a wrong date ("until Monday 3rd November" gave the Monday before; "until 3 November 2027" gave 2026); both were fixed before merging.
 
+## T08 — The filing cabinet
+
+**What it is.** Eleven database tables: the people (`contacts`), every email sent (`sends`), every reply (`replies`), the do-not-email list (`suppression`), a diary of everything that happened to each person (`events`), the pretend calendar (`sim_clock`), the pretend email company's own records (`mock_outbox`, `mock_inbox`), and the AI's memory and daily counter (`llm_cache`, `llm_usage`). A migration file builds them, and `npm run db:reset` wipes and rebuilds the whole cabinet.
+
+**The cabinet refuses bad paperwork.** The code is the first line of defence; the database is the second. It refuses, for example, a person marked "follow-up 1 sent" whose next step isn't follow-up 2, a finished person who still has a next email planned, or a second "first email" for the same person. That last one is the double-send guard: even if two workers somehow both try to send the same email, the database keeps only one.
+
+**One trap found during the build.** In Postgres, a rule whose answer is "unknown" (because a value is empty) counts as passing. So the "status and next step must match" rule was written in a way that turns "unknown" into "no", or it would have let an empty next step slip through.
+
+**No real-clock dates.** None of our tables fills in a date from the computer's clock by itself. Every date is written by the code from the pretend calendar, so real dates can't leak into the simulation. (The AI's two tables are the exception: the free AI's daily limit counts real days.)
+
+**The email company's records point at nothing of ours.** `mock_outbox` and `mock_inbox` stand in for an outside company, which wouldn't know our record numbers, and whose work stays done even if ours is undone. So they're keyed by the email's unique label (`"812:follow_up_1"`), not linked to our tables.
+
+## T09 — The wall calendar
+
+**What it is.** The simulation's "today" is a single row in the database, and `src/clock.ts` is the only code that reads or moves it. `getNow` reads it, `setNow` sets it (the seed sets it to the start date), and `advance(days)` moves it forward. A month of campaign plays out in a minute by moving the calendar a day and running the engine, over and over.
+
+**Why a database row, not a variable.** A variable disappears when the program stops; the row survives, so every run, worker and the dashboard agree on what day it is.
+
+**Why `advance` is one step.** "Read today, add a day, write it back" breaks when two things do it at once: both read Monday, both write Tuesday, and a day is lost. One database statement that adds the day itself can't lose one. A check fires ten advances at once and confirms the calendar moves exactly ten days.
+
+**No real clock anywhere.** A check reads every code file and fails if any of them looks at the computer's clock, except the AI folder, because the free AI's daily limit counts real days.
+
+## T10 — The starting crowd, and the inspector
+
+**What it is.** `npm run seed` fills the empty cabinet with 10,000 made-up people and a believable past: 60% not emailed yet, about 28% part-way through their four emails, and the rest already finished (replied, bounced, unsubscribed, or given up on). New people start in daily waves of 1,000, and some part-way people are due on day one, so the engine has real work from the first tick.
+
+**The past follows the rulebook.** Nobody's situation is typed in directly. Each person starts as "new" and is walked step by step through T03's rulebook, so the seed can't invent a past the engine would call impossible.
+
+**Same seed number, same crowd.** One seed number drives every random choice. Run it again on a fresh database and you get the same people, the same dates, even the same record numbers. That's what lets a check compare two runs, and lets anyone reproduce a problem exactly.
+
+**All or nothing.** The whole seed is one transaction: if anything fails half-way, nothing is kept. It refuses to run on a cabinet that already has people in it.
+
+**The inspector.** `checkInvariants` asks the cabinet seven questions and lists everyone who fails one: do the emails match the situation, is every bounce a real bounce, is every unsubscribe on the do-not-email list, are next steps set only for people still being emailed, does every reply come after its email, does each person's diary end where they are now, and does the email company agree with our records. Its checks feed it data broken on purpose, one way at a time, to prove each question really catches its problem; an inspector only ever shown good data could be blind and nobody would know.
+
+**Two bugs found by probing.** All checks passed with the default settings. Trying a start time of 23:30 put 117 people's next email more than two days overdue, because the window was measured from 09:00 instead of the real start time. Trying one-day waits produced replies that arrived after the next email was already due, a past the engine could never produce. Both were fixed and now have checks.
+
+## T11 — The other post office
+
+**What it is.** The engine never sends real email. It hands each email to `src/mock/provider.ts`, a pretend email company, which answers "accepted" or "bounced" and sometimes schedules a reply to arrive 12–72 hours later.
+
+**Same email, same answer.** Every decision comes from scrambling the seed number with the email's unique label (or, for bounces, the address) into a number between 0 and 1. So the answer doesn't depend on which worker sent first or in what order. About 3% of addresses are "dead" and bounce whatever is sent to them, which is how real mail fails.
+
+**It behaves like an outside company.** It keeps its own records on its own database connection. If the engine crashes after the company accepted an email but before saving it, the company still remembers. When the engine retries, the company recognises the label, gives the same answer and creates nothing new, so the person gets one email, not two.
+
+**The reply bank.** Replies come from written texts for each kind of reply, including deliberately tricky ones ("Not right now, maybe next quarter", "Who gave you my address?") meant for the AI. Most holiday replies carry the "sent automatically" stamp and a return date in a form the clerk (T07) can read; some don't, to test the fallbacks. A check makes sure the clerk never gives any of these texts a wrong label: it either gets them right or says "not sure".
+
+**A risk found for later.** The company and the engine currently share one set of 10 database connections. A probe showed that when all 10 are held by engine workers, the company waits forever for one. The fix belongs to T13: the company gets its own set of connections (decision D43).
+
 ## How each task was built
 
 The same loop every time. A "harness" writes the checks first, from the spec, and confirms they fail because nothing is built yet. A "junior" writes the code until every check passes. The harness then reruns everything itself, reads every line, and tries odd inputs the checks didn't cover; anything wrong goes back to the junior. Finally the reasons are written into `docs/decisions.md`, and Deepak explains the key idea back before the task is merged.
 
-The weak spot, stated honestly: the harness and the junior are the same kind of AI model, so they can share a blind spot. The spec, the hand-probing, and Deepak's explain-back are what guard against that. The T02 and T07 bugs above were all found by probing, not by the original checks.
+The weak spot, stated honestly: the harness and the junior are the same kind of AI model, so they can share a blind spot. The spec, the hand-probing, and Deepak's explain-back are what guard against that. The T02, T07 and T10 bugs above were all found by probing, not by the original checks.
 
 ## Where to look
 
@@ -121,5 +173,9 @@ The weak spot, stated honestly: the harness and the junior are the same kind of 
 | T05 | `src/templates/render.ts`, `src/regex.ts` | `tests/unit/render.test.ts`, `tests/unit/regex.test.ts` |
 | T06 | `src/segments.ts` | `tests/unit/segments.test.ts` |
 | T07 | `src/classify/rules.ts` | `tests/unit/rules.test.ts` |
+| T08 | `src/db/migrations/001_init.sql`, `src/db/migrate.ts`, `src/db/reset.ts` | `tests/db/schema.test.ts`, `tests/db/schema-drift.test.ts` |
+| T09 | `src/clock.ts` | `tests/db/clock.test.ts`, `tests/unit/no-real-clock.test.ts` |
+| T10 | `src/seed/seed.ts`, `src/seed/run.ts`, `src/invariants.ts` | `tests/db/seed.test.ts`, `tests/db/invariants.test.ts` |
+| T11 | `src/mock/provider.ts`, `src/mock/replies.ts` | `tests/db/provider.test.ts`, `tests/unit/mock-replies.test.ts` |
 
-Why each choice was made, with what it costs: `docs/decisions.md` (D19–D30 cover these tasks). How the pieces will connect once the engine exists: `docs/flow.md`. The system explained as a whole: `docs/mental-model.md`.
+Why each choice was made, with what it costs: `docs/decisions.md` (D19–D43 cover these tasks). How the pieces will connect once the engine exists: `docs/flow.md`. The system explained as a whole: `docs/mental-model.md`.
