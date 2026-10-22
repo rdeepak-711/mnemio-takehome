@@ -18,7 +18,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - ✅ T07 Rule classifier → `tasks/T07-rules.md`
 
 ## Layer 2 — Database (task files written when Layer 1 is green)
-- 🗣 T08 Schema + migrations → `tasks/T08-schema.md`
+- ✅ T08 Schema + migrations → `tasks/T08-schema.md`
 - ☐ T09 Simulated clock
 - ☐ T10 Seed 10k with consistent history
 - ☐ T11 Mock provider (bounces, replies with true label, idempotency)
