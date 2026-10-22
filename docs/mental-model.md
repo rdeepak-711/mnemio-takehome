@@ -80,6 +80,12 @@ The simulation's "today" is one row in the database, and `src/clock.ts` is the o
 
 `checkInvariants` is the inspector. It asks the database seven questions, such as "does anyone marked as bounced lack a bounce?" and "does anyone's history end at a different status from the one they have now?", and lists every record that fails. The seed runs it at the end. Its own tests feed it data broken on purpose, one way at a time, to prove it catches each kind of break; an inspector only ever shown good data could be blind and nobody would know.
 
+## The pretend email company (built in T11)
+
+The engine never sends real email. It hands each email to `src/mock/provider.ts`, a pretend email company, which answers "accepted" or "bounced" and sometimes schedules a reply to arrive 12–72 hours later. Each decision comes from scrambling the seed number together with the email's unique key (for bounces, the address) into a number between 0 and 1. So the same email always gets the same answer, whichever worker sends it and in whatever order; that's what lets four workers run at once and still give repeatable results. About 3% of addresses are "dead" and bounce whatever is sent to them.
+
+It behaves like an outside company. It keeps its own records (`mock_outbox`, `mock_inbox`) and writes them on its own connection, so if the engine's work is undone after a crash, the company's record that it already got the email stays, just as a real provider wouldn't forget. Sending the same key again gets the first answer back and creates nothing new, which is how a retry after a crash avoids a second email. The replies come from a bank of written texts, including deliberately tricky ones meant for the AI; a test makes sure the simple rules never give any of them a wrong label.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
@@ -96,4 +102,6 @@ The simulation's "today" is one row in the database, and `src/clock.ts` is the o
 - **Fallback:** the simpler option used when the AI fails or the quota is used up.
 - **Seed (number):** the starting number for the random choices; the same number always produces the same choices.
 - **Invariant:** a rule that must be true of the data at all times, e.g. "a bounced contact has a bounced email".
+- **Hash:** a fixed scramble of some text into a number; the same text always gives the same number.
+- **Connection pool:** a small set of open database connections that code borrows and returns.
 - **Transaction:** a group of database changes that are kept all together or not at all.

@@ -298,3 +298,10 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** only clear-cut texts; letting ambiguous texts trip the rules.
 **Why:** the rules are trusted without an AI check, so a rule mistake goes straight into the contact's status. Ambiguous texts are still needed so the AI classifier (T17) and its accuracy figure (T19) are tested on hard cases, but those must reach the AI as `null`, not be grabbed by a rule. OOO replies without a header or without a date exercise the phrase rule and the `OOO_DEFAULT_DAYS` fallback.
 **Cost:** writing the bank is constrained by the rules' patterns; changing a rule pattern later can break the bank test, which is the point.
+
+## D43 · 2026-10-22 · The mock provider gets its own connection pool (for T13)
+
+**Decided:** when T13 wires the engine to the provider, the provider is given its own `pg.Pool`, not the cached engine pool from `getPool`. T13 adds a test with more workers than the engine pool has connections.
+**Considered:** sharing the one pool and capping the number of workers below half its size.
+**Why:** each engine worker holds a connection for its send transaction and the provider then needs a second one. With a shared pool of 10, five or more workers take every connection and the provider waits forever; a probe on T11 confirmed it hangs with 10 connections held. A real mail service has its own connections, so a separate pool is also the more faithful model.
+**Cost:** two pools means more open Postgres connections (default 10 each, well under Postgres's 100).
