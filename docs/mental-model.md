@@ -70,6 +70,10 @@ The tables don't just store data, they refuse impossible data. The database won'
 
 Two deliberate quirks. Every time in these tables is simulated time written by the code; none is filled in from the real clock, because that would mix real dates into the simulation. And the fake mail service's tables don't point at ours at all: it stands in for an outside company, which wouldn't know our record numbers and whose work stays done even if ours is undone.
 
+## The pretend calendar (built in T09)
+
+The simulation's "today" is one row in the database, and `src/clock.ts` is the only code that reads or moves it. Everything else asks this file what day it is; nothing looks at the computer's own clock, and a test scans every file to make sure (the AI folder is the one exception, because the free AI's daily limit counts real days). Moving the row forward one day and running a tick is how a month of campaign plays out in a minute. The move is a single database statement, so even if two things advance the clock at the same moment, no day is lost.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
