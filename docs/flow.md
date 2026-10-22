@@ -1,6 +1,6 @@
 # Execution flow
 
-**Status: PLANNED, partly built.** T01 (DB pool), T02 (config), T03 (lifecycle), T04 (schedule) and T05 (render) exist; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
+**Status: PLANNED, partly built.** T01 (DB pool), T02 (config), T03 (lifecycle), T04 (schedule), T05 (render) and T06 (segments) exist; Layer 1 (pure logic) is complete except T07; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
 
 ## Entry points
 
@@ -55,8 +55,8 @@ tick
            for each contact:
              suppression check                   [DB]
              getSequence(segment)                src/ai/sequences.ts    [cache / NETWORK / fallback]
-             render(template, vars)              src/templates/render.ts:24 (pure, BUILT T05)
-             checkContent(email)                 src/templates/render.ts:38 (pure, BUILT T05)
+             render(template, vars)              src/templates/render.ts:22 (pure, BUILT T05)
+             checkContent(email)                 src/templates/render.ts:36 (pure, BUILT T05)
              provider.send({idempotencyKey,…})   src/mock/provider.ts   [BOUNDARY: own DB connection = "external"]
              INSERT sends ON CONFLICT DO NOTHING [DB: UNIQUE (contact_id, step)]
              transition(status, sent:<step>)     src/lifecycle.ts:105   (pure, BUILT T03; throws InvalidTransitionError)
@@ -78,4 +78,5 @@ tick
 - **T02:** `src/labels.ts`, `src/config.ts` (`loadConfig`). Pure logic, no boundary crossed. Not yet called from anywhere except tests.
 - **T03:** `src/lifecycle.ts`: `transition` (:105) switches on the event; replies go to `applyReply` (:84); `expectedStep` (:62) reads the `EXPECTED_STEP` table (:42); a valid send copies its row from `AFTER_SENT` (:55). Imports only `./labels`. Planned callers: `src/engine/send.ts` (T13) after each send, `src/engine/replies.ts` (T14) after a reply is labelled, `src/engine/deactivate.ts` (T15). Not called from anywhere except tests yet.
 - **T04:** `src/schedule.ts`: `nextActionAt` (:17) picks the wait for the step from `WAIT_INDEX` (:6) and adds it with `addDays` (:13); `oooReschedule` (:22) picks `returnDate + 1 day` if that's after `now`, else `now + defaultDays`, then takes the later of that and the current due date. Imports only `type Step`. Never reads the real clock (a test checks the source). Planned callers: `src/engine/send.ts` (T13) after a send, `src/engine/replies.ts` (T14) for out-of-office. Not called from anywhere except tests yet.
-- **T05:** `src/templates/render.ts`: `render` (:24) fills `{{slot}}`s in one `replace` pass using `SLOT_PATTERN` (:10), throwing on an unknown slot or an empty value; `findSlots` (:33) lists slot names; `checkContent` (:38) returns every problem (leftover braces, empty or long subject, long body, spam words via `SPAM_PATTERNS` :21). No imports. Planned callers: `src/engine/send.ts` (T13) renders then checks each email before `provider.send`; `src/ai/sequences.ts` (T17) uses `findSlots` + `checkContent` to vet AI-written templates. Not called from anywhere except tests yet.
+- **T05:** `src/templates/render.ts`: `render` (:22) fills `{{slot}}`s in one `replace` pass using `SLOT_PATTERN` (:12), throwing on an unknown slot or an empty value; `findSlots` (:31) lists slot names; `checkContent` (:36) returns every problem (leftover braces, empty or long subject, long body, spam words via `SPAM_PATTERNS` :19). Imports only `escapeRegExp` from `src/regex.ts`. Planned callers: `src/engine/send.ts` (T13) renders then checks each email before `provider.send`; `src/ai/sequences.ts` (T17) uses `findSlots` + `checkContent` to vet AI-written templates. Not called from anywhere except tests yet.
+- **T06:** `src/segments.ts`: `roleFamily` (:45) tries each rule in `RULES` (:32) in order via the regexes in `PATTERNS` (:40), defaulting to `ops_finance`; `segmentOf` (:50) builds `'<family>:<industry>'`; `allSegments` (:54) lists all 20; `ROLE_TITLES` (:8) is the pool the seed draws from. Imports only `escapeRegExp` from `src/regex.ts`. Planned callers: `src/seed/seed.ts` (T10) sets each contact's `role_family` and `segment`; `src/ai/sequences.ts` (T17) asks the AI for one sequence per segment. Not called from anywhere except tests yet.

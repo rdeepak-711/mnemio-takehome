@@ -1,3 +1,5 @@
+import { escapeRegExp } from '../regex';
+
 export const ALLOWED_SLOTS = ['first_name', 'last_name', 'company', 'role', 'industry'] as const;
 export type Slot = (typeof ALLOWED_SLOTS)[number];
 
@@ -11,10 +13,6 @@ const SLOT_PATTERN = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
 
 function isSlot(name: string): name is Slot {
   return (ALLOWED_SLOTS as readonly string[]).includes(name);
-}
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // Matches from the start of a word only, so "act now" does not hit "contact now".

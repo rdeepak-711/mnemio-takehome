@@ -14,7 +14,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - ✅ T03 State machine → `tasks/T03-lifecycle.md`
 - ✅ T04 Schedule (next date, OOO delay) → `tasks/T04-schedule.md`
 - ✅ T05 Template render + content check → `tasks/T05-render.md`
-- ☐ T06 Segments (role family) → `tasks/T06-segments.md`
+- ✅ T06 Segments (role family) → `tasks/T06-segments.md`
 - ☐ T07 Rule classifier → `tasks/T07-rules.md`
 
 ## Layer 2 — Database (task files written when Layer 1 is green)

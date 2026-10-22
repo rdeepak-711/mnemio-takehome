@@ -48,13 +48,20 @@ The AI writes one email sequence per segment, with blanks in it like `Hi {{first
 
 Before any email goes out, `checkContent` reads it like a strict proofreader and lists everything wrong: a blank that wasn't filled, an empty or very long subject, a very long body, or a word spam filters dislike ("guarantee", "act now", "winner" and a few more). An empty list means it's fine to send. Filling and checking are separate on purpose: the same check is also used on AI-written templates before they're ever used.
 
+## Grouping people so the AI writes 20 sequences, not 10,000 (built in T06)
+
+Every contact belongs to one of 20 groups, called segments. A segment is two facts put together: the kind of job they do (founder, sales, operations and finance, or tech) and their company's industry (SaaS, e-commerce, fintech, healthcare, logistics). Four kinds of job times five industries is 20. The AI writes one email sequence per segment, and code fills in each person's name and company, so the whole campaign needs about 20 AI calls for writing instead of one per person.
+
+The kind of job comes from the job title, using simple keyword rules in `src/segments.ts`, checked in a fixed order: founder words first, then tech, then sales, then operations and finance. The first rule that matches wins, which is why "Founder, ex-Sales Director" counts as a founder. Keywords must be whole words, so "Director" doesn't count as tech just because it contains the letters "cto". A title that matches nothing goes to operations and finance, and a test pins that so the choice can't change by accident. The seed only uses titles from a fixed list, and a test checks that every one of them lands in the group it was meant for.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
-- **Segment:** a group of contacts with the same job type and industry, e.g. "founder · SaaS".
+- **Segment:** a group of contacts with the same job type and industry, written `founder:saas`. There are 20.
 - **Suppression list:** addresses that must never be emailed again (unsubscribed or bounced).
 - **Idempotency key:** a label that is unique per email ("contact 812, follow-up 1"), so sending it twice can be detected and ignored.
 - **Environment variable:** a named setting given to the program from outside its code, e.g. `WAIT_DAYS=3,5,7,7`.
 - **Terminal status:** a finished status (`replied`, `bounced`, `unsubscribed`, `deactivated`); no more emails are ever sent.
 - **Slot:** a blank in a template, written `{{name}}`, filled from the contact's record.
+- **Role family:** the kind of job a title belongs to: `founder`, `sales`, `ops_finance` or `tech`.
 - **Fallback:** the simpler option used when the AI fails or the quota is used up.
