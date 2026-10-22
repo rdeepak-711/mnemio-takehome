@@ -220,7 +220,7 @@ Each task has its own file `tasks/T0x-*.md`, written by the harness engineer wit
 
 ### Layer 6 — Dashboard (spec in `spec/dashboard.md`)
 
-**T21a Core dashboard.** Overview KPIs, funnel with a day slider (state on day D is computed from `events` up to D, never stored separately), contact journey that animates on advance, contact list with a detail timeline, simulation controls (advance 1 / 7 days, reset) that call the same engine functions through route handlers. **T21b Extras** only if time: classifier view, activity log page, extra charts.
+**T21a Core dashboard.** Overview KPIs, funnel with a day slider (state on day D is computed from `events` up to D, never stored separately), contact journey that animates on advance, contact list with a detail timeline, simulation controls (advance 1 / 7 days, reset) that call the same engine functions through route handlers. Funnel details (Deepak, 23 Oct): days are labelled from Day 1 (= `SIM_START`); the funnel shows the three starting groups separately (seeded `new`, seeded part-way, seeded finished), and the finished group's line stays flat across all days; each stage shows people who moved on and people who dropped out there (reply, bounce, unsubscribe); clicking a stage opens a pop-up with 5 example contacts and their timelines. **T21b Extras** only if time: classifier view, activity log page, extra charts.
 
 ### Layer 7 — Bonus and delivery
 

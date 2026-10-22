@@ -305,3 +305,10 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** sharing the one pool and capping the number of workers below half its size.
 **Why:** each engine worker holds a connection for its send transaction and the provider then needs a second one. With a shared pool of 10, five or more workers take every connection and the provider waits forever; a probe on T11 confirmed it hangs with 10 connections held. A real mail service has its own connections, so a separate pool is also the more faithful model.
 **Cost:** two pools means more open Postgres connections (default 10 each, well under Postgres's 100).
+
+## D44 · 2026-10-23 · About 10% of replies to follow-up 3 arrive after deactivation
+
+**Decided:** the mock provider makes 10% (`LATE_REPLY_SHARE`) of replies to `follow_up_3` arrive `waitDays[3] + 1` to `+ 14` days after the send, so they land after the contact is deactivated. Decided per email by `draw(seed, 'late', key)`; the step is read from the idempotency key. The provider config now includes `waitDays`. Every other reply keeps the 12–72 hour delay.
+**Considered:** leaving all replies at 12–72 hours (the T11 build); a fixed late delay such as 8–21 days.
+**Why:** with only 12–72 hour delays a reply always arrives before the 7-day deactivation wait ends, so the rule "a deactivated contact can still reply and becomes `replied`" (T03) would never happen in a run and would be a claim, not a tested behaviour (Deepak, 23 Oct). Tying the delay to the last wait keeps replies late whatever `WAIT_DAYS` is set to.
+**Cost:** the provider now parses the step out of the key, so it depends on the key format `"<contact_id>:<step>"`, which the `sends_idempotency_key_check` constraint already guarantees.
