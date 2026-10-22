@@ -120,8 +120,8 @@ The seed writes the same events, with past timestamps, for the history it create
 ### Invariants (checked by T10 on the seed, T18 after a run, T20 after the 10k run)
 
 1. A contact's `sends` are contiguous steps from `first`, at most 4, and match its status (`new` 0, `first_sent` 1, … `follow_up_3_sent` 4). `replied`, `unsubscribed`, `deactivated` have the sends they had when they left the sequence.
-2. `bounced` ⇔ the contact's last send has `outcome = 'bounced'` and a suppression row with reason `bounced` exists.
-3. `unsubscribed` ⇔ a suppression row exists, and the contact has a reply labelled `unsubscribe` or was suppressed before being claimed.
+2. `bounced` ⇔ the contact's last send has `outcome = 'bounced'` and a suppression row with reason `bounced` exists. An `unsubscribed` contact may also have both (a late unsubscribe after a bounce; D48).
+3. `unsubscribed` ⇔ a suppression row exists, and the contact has a reply labelled `unsubscribe` or was suppressed before being claimed. The row's reason is `unsubscribed`, or `bounced` when its last send bounced (D48).
 4. In-sequence ⇔ `next_action` and `next_action_at` are not null. Terminal ⇔ both are null.
 5. Every reply's `received_at` is after its send's `sent_at`, and every reply belongs to an accepted send.
 6. Replaying a contact's `status_changed` events in order ends at its current status.

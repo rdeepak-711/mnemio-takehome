@@ -205,6 +205,41 @@ describe('checkInvariants catches each break, with the right number', () => {
     expect(await reported()).toContain(2);
   });
 
+  // T14: a late "unsubscribe" to an earlier email can arrive after a later email bounced; unsubscribe wins.
+  async function unsubscribedAfterBounce(opts: { suppression: boolean }) {
+    const c = await contact('unsubscribed');
+    const first = await send(c.id, 'first', T0);
+    await send(c.id, 'follow_up_1', T1, { outcome: 'bounced' });
+    if (opts.suppression) await suppress(c.email, 'bounced', T1);
+    await reply(c.id, first, T2, 'unsubscribe');
+    await changed(c.id, 'new', 'first_sent', T0);
+    await changed(c.id, 'first_sent', 'bounced', T1);
+    await changed(c.id, 'bounced', 'unsubscribed', T2);
+    return c;
+  }
+
+  it('2 and 3: unsubscribed after a bounce, with only the bounced suppression row (first reason wins), is not a break', async () => {
+    await unsubscribedAfterBounce({ suppression: true });
+    expect(await checkInvariants(pool)).toEqual([]);
+  });
+
+  it('2: unsubscribed whose last send bounced but with no bounced suppression row is a break', async () => {
+    const c = await unsubscribedAfterBounce({ suppression: false });
+    await suppress(c.email, 'unsubscribed', T2);
+    expect(await reported()).toEqual([2]);
+  });
+
+  it('2: unsubscribed with a bounced suppression row but no bounced send is a break', async () => {
+    const c = await contact('unsubscribed');
+    const s = await send(c.id, 'first', T0);
+    await suppress(c.email, 'bounced', T1);
+    await reply(c.id, s, T1, 'unsubscribe');
+    await changed(c.id, 'new', 'first_sent', T0);
+    await changed(c.id, 'first_sent', 'unsubscribed', T1);
+    // Also 3: with no bounced send, a bounced row doesn't excuse the missing unsubscribed row.
+    expect(await reported()).toEqual([2, 3]);
+  });
+
   it('3: unsubscribed without a suppression row', async () => {
     const c = await contact('unsubscribed');
     const s = await send(c.id, 'first', T0);
