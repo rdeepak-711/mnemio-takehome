@@ -18,10 +18,19 @@ A sales team wants to email 10,000 people: one first email and up to three follo
 
 **5. Everything that happens is written to a diary.** Every send, bounce, reply, label and deactivation is appended to `events` with its simulated time. Nothing in it is ever changed. The dashboard's day slider reads this diary: "what did the funnel look like on day 12?" is a count of diary entries up to day 12. If something isn't in the diary, the dashboard can't show it.
 
+## Settings: checked once, at the start (built in T02)
+
+All the knobs of the system live in environment variables, usually in a `.env` file: how many contacts, how many days between emails, how often the fake mail service bounces or gets replies, which AI models to try. Environment variables are always text, even the numbers. Before anything else happens, `loadConfig` in `src/config.ts` reads every one of them once. For each it either uses what's given or falls back to a default (an empty line like `AI_RPM=` counts as not given), checks it, and turns the text into a real value: `"3,5,7,7"` becomes the four numbers 3, 5, 7, 7. If anything is wrong, such as three wait days instead of four or reply shares adding up to 90%, the program stops immediately with an error that names the variable. The rest of the code never reads `.env` itself. It gets one checked object and can trust it.
+
+Two details matter later. The start time of the simulation must include a timezone, otherwise two laptops would start the simulation at different moments and get different results. And a missing AI key becomes "no key" (`null`), which is the signal for the AI steps to use their fallbacks, so the system still runs for someone without a key.
+
+The four kinds of reply a contact can send back (interested, not interested, out of office, unsubscribe) are written down once, in `src/labels.ts`. A classifier can give a fifth answer, "needs review", meaning a human should look. Every part of the code takes these words from that one file, so a misspelling anywhere is caught by TypeScript before the code runs.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
 - **Segment:** a group of contacts with the same job type and industry, e.g. "founder · SaaS".
 - **Suppression list:** addresses that must never be emailed again (unsubscribed or bounced).
 - **Idempotency key:** a label that is unique per email ("contact 812, follow-up 1"), so sending it twice can be detected and ignored.
+- **Environment variable:** a named setting given to the program from outside its code, e.g. `WAIT_DAYS=3,5,7,7`.
 - **Fallback:** the simpler option used when the AI fails or the quota is used up.
