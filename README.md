@@ -102,13 +102,18 @@ Every history is produced by walking the contact through the same `transition()`
 
 `sendDue` (`src/engine/send.ts`) works through due contacts in batches of 200 (`SEND_BATCH_SIZE`), several workers at once. Each email uses the AI template for the contact's segment when there is a valid one (T17), otherwise a hand-written fallback; both are checked for leftover blanks, length and spam words before sending. Contact details are cleaned first (braces removed, blanks given stand-ins like "there"), so one bad record can't stop the run. The mock provider runs on its own connection pool, like a real outside service. On the 10,000-contact seed, the first day's 1,883 emails take about 1.6 seconds with 4 workers.
 
+## Replies
+
+`deliverReplies` (`src/engine/replies.ts`) moves due mock replies into `replies` at the start of each day, in one statement that parallel callers can't double-deliver. A reply whose send was undone by a crash waits until the retried send is saved. `processReplies` labels them in batches of 25: plain rules first, then the AI for the unclear ones (T17), and `needs_review` when there is no AI or it fails, so the run never stops because of the AI. Interested, not interested and needs review stop the sequence; unsubscribe stops it and adds the address to the do-not-email list (it also beats an earlier bounce); out of office moves the next email to the day after the return date, or 7 days on. Replies are handled before sending, so a reply always stops the next email. Over 20 simulated days on the 10,000-contact seed with no AI key, every day took 0.5–2.0 seconds and the consistency checks were clean every day.
+
 ## AI (planned, T16–T17)
 
 The free models allow roughly 45 calls a day. The design: the AI writes one 4-email sequence per segment (20 segments = 4 role families × 5 industries), and code fills in each contact's details; replies are first sorted by plain rules (auto-reply header, "unsubscribe", "out of office"), and only unclear ones go to the AI, 25 per call. Answers are cached; on failure or an exhausted budget, a hand-written template or a `needs_review` label takes over so the system never stops.
 
 ## Known limitations so far
 
-- The engine, AI, report, dashboard and the timed 10,000-contact run are not built yet; no run results exist yet.
+- Deactivation (T15), the AI (T16–T17), the tick/advance commands, report, dashboard and the timed full run are not built yet.
+- Without an AI key, every reply the rules can't label becomes `needs_review` and stops that contact's emails (about 70% of replies in the 20-day probe).
 - Late replies are only simulated for follow-up 3; replies to earlier emails always arrive within 12–72 hours.
 - Contacts with missing names or companies get a less personal email ("Hi there") rather than being flagged for review.
 
