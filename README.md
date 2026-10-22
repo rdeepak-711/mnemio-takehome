@@ -1,6 +1,6 @@
 # Mnemio cold-email engine
 
-> **Status: in progress (23 Oct 2026).** Tasks T01–T12 are built and tested: the project setup, the rulebooks, the database, the simulated clock, the 10,000-contact seed and the mock email provider. The engine that sends emails on a schedule (T12–T18), the AI (T16–T17), the report (T19), the full 10,000-contact run (T20) and the dashboard (T21) are next. This README describes what exists today and is completed in T23.
+> **Status: in progress (23 Oct 2026).** Tasks T01–T13 are built and tested: the project setup, the rulebooks, the database, the simulated clock, the 10,000-contact seed and the mock email provider. The engine that sends emails on a schedule (T12–T18), the AI (T16–T17), the report (T19), the full 10,000-contact run (T20) and the dashboard (T21) are next. This README describes what exists today and is completed in T23.
 
 ## What the system does
 
@@ -16,7 +16,7 @@ npm install
 cp .env.example .env             # the defaults work; the AI key is only needed from T16 on
 npm run db:reset                 # build the tables
 npm run seed                     # 10,000 contacts with history; prints "invariants: ok"
-npm test                         # 550 automated tests
+npm test                         # 603 automated tests
 ```
 
 `npm run seed` takes about 1 second on a MacBook. Running it twice without `db:reset` is refused.
@@ -32,7 +32,7 @@ TypeScript on Node, Postgres as both the database and the work queue, plain SQL 
 | 0 Skeleton | T01 | Project, Docker Postgres, test runner, connection pool | built |
 | 1 Pure rules | T02–T07 | Settings check, lifecycle rulebook, schedule, templates, segments, reply rules | built |
 | 2 Data | T08–T11 | Tables, simulated clock, seed + consistency checker, mock provider | built |
-| 3 Engine | T12–T15 | Claim due contacts, send, process replies, deactivate | T12 built, rest next |
+| 3 Engine | T12–T15 | Claim due contacts, send, process replies, deactivate | T12–T13 built, T14–T15 next |
 | 4 AI | T16–T17 | OpenRouter client, sequence writer, reply classifier | planned |
 | 5 Whole system | T18–T20 | Tick + advance, report, timed 10,000-contact run | planned |
 | 6 Dashboard | T21–T22 | Funnel with day slider, contact timelines; mailbox warm-up bonus | planned |
@@ -71,7 +71,7 @@ Four layers, all built:
 1. **The mock provider remembers every email by its key** (`"<contact_id>:<step>"`). Sending the same key again returns the first answer and creates nothing new, so a retry after a crash is harmless.
 2. **The provider writes on its own connection**, like a real outside service: if our transaction rolls back, its record of the email survives.
 3. **The database allows one row per contact per step** (`UNIQUE (contact_id, step)` on `sends`).
-4. **Workers claim due contacts with `FOR UPDATE SKIP LOCKED`** (`src/engine/claim.ts`), so two workers never work on the same contact at once; other workers skip locked rows instead of waiting. *(T13 makes each batch's sends, records and status changes commit together.)*
+4. **Workers claim due contacts with `FOR UPDATE SKIP LOCKED`** (`src/engine/claim.ts`), so two workers never work on the same contact at once; other workers skip locked rows instead of waiting. Each batch's emails, records and status changes are saved as one transaction (`src/engine/send.ts`), so a crash undoes our side completely; the provider remembers what it was handed, so the retry sends nothing twice. A test crashes a batch half-way and checks exactly this.
 
 ## Seed data
 
@@ -98,6 +98,10 @@ Every history is produced by walking the contact through the same `transition()`
 - **Out of office:** 75% carry an `Auto-Submitted` header; most give a return date the rules can read; some give none.
 - **Late replies:** 10% of replies to follow-up 3 arrive 8–21 days later, after the contact has been deactivated, so the late-reply rule is exercised in every run.
 
+## Sending
+
+`sendDue` (`src/engine/send.ts`) works through due contacts in batches of 200 (`SEND_BATCH_SIZE`), several workers at once. Each email uses the AI template for the contact's segment when there is a valid one (T17), otherwise a hand-written fallback; both are checked for leftover blanks, length and spam words before sending. Contact details are cleaned first (braces removed, blanks given stand-ins like "there"), so one bad record can't stop the run. The mock provider runs on its own connection pool, like a real outside service. On the 10,000-contact seed, the first day's 1,883 emails take about 1.6 seconds with 4 workers.
+
 ## AI (planned, T16–T17)
 
 The free models allow roughly 45 calls a day. The design: the AI writes one 4-email sequence per segment (20 segments = 4 role families × 5 industries), and code fills in each contact's details; replies are first sorted by plain rules (auto-reply header, "unsubscribe", "out of office"), and only unclear ones go to the AI, 25 per call. Answers are cached; on failure or an exhausted budget, a hand-written template or a `needs_review` label takes over so the system never stops.
@@ -106,7 +110,7 @@ The free models allow roughly 45 calls a day. The design: the AI writes one 4-em
 
 - The engine, AI, report, dashboard and the timed 10,000-contact run are not built yet; no run results exist yet.
 - Late replies are only simulated for follow-up 3; replies to earlier emails always arrive within 12–72 hours.
-- The mock provider and the engine currently share one connection pool; T13 gives the provider its own (D43), because a probe showed the provider waits forever when engine workers hold every connection.
+- Contacts with missing names or companies get a less personal email ("Hi there") rather than being flagged for review.
 
 ## Where to read more
 

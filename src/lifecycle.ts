@@ -29,7 +29,8 @@ export type LifecycleEvent =
   | { type: 'sent'; step: Step }
   | { type: 'bounced' }
   | { type: 'reply'; label: Label }
-  | { type: 'deactivate_due' };
+  | { type: 'deactivate_due' }
+  | { type: 'suppressed'; reason: 'bounced' | 'unsubscribed' };
 
 export class InvalidTransitionError extends Error {
   constructor(message: string) {
@@ -71,6 +72,8 @@ function describeEvent(event: LifecycleEvent): string {
       return `sent:${event.step}`;
     case 'reply':
       return `reply:${event.label}`;
+    case 'suppressed':
+      return `suppressed:${event.reason}`;
     case 'bounced':
     case 'deactivate_due':
       return event.type;
@@ -118,6 +121,10 @@ export function transition(
     case 'deactivate_due':
       if (status !== 'follow_up_3_sent') throw invalid(status, event);
       return { status: 'deactivated', nextAction: null };
+    case 'suppressed':
+      // The address is on the do-not-email list; the status records why (D34).
+      if (!isInSequence(status)) throw invalid(status, event);
+      return { status: event.reason, nextAction: null };
     default: {
       const unhandled: never = event;
       throw new Error(`unhandled event ${JSON.stringify(unhandled)}`);

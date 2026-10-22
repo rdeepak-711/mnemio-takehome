@@ -179,3 +179,22 @@ describe('deactivate_due', () => {
     expect(() => transition(status, { type: 'deactivate_due' })).toThrow(InvalidTransitionError);
   });
 });
+
+describe('suppressed (T13, D34)', () => {
+  const reasons = ['bounced', 'unsubscribed'] as const;
+
+  it.each(inSequence.flatMap((s) => reasons.map((r) => [s, r] as const)))(
+    '%s + suppressed:%s → that status, no next action',
+    (status, reason) => {
+      expect(transition(status, { type: 'suppressed', reason })).toEqual({ status: reason, nextAction: null });
+    },
+  );
+
+  it.each(terminal)('%s + suppressed throws', (status) => {
+    expect(() => transition(status, { type: 'suppressed', reason: 'unsubscribed' })).toThrow(InvalidTransitionError);
+  });
+
+  it('the error names the event', () => {
+    expect(() => transition('replied', { type: 'suppressed', reason: 'bounced' })).toThrow(/suppressed:bounced/);
+  });
+});

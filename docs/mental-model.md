@@ -90,6 +90,10 @@ It behaves like an outside company. It keeps its own records (`mock_outbox`, `mo
 
 Several workers send at once. Before a worker emails anyone, it takes a batch of up to 200 people whose next email is due, and puts a lock on each of those rows in the database. Another worker asking at the same moment doesn't wait for those rows; it skips them and takes the next people in line. The lock lasts until the worker finishes its batch and saves (or gives up and undoes everything), so no two workers ever work on the same person at the same time. People who are finished, or whose only remaining step is "give up on them", are never taken. Someone on the do-not-email list is still taken, because the send step needs to see them to close them off properly.
 
+## Sending a batch (built in T13)
+
+A worker takes a batch of due people (T12) and goes through them one by one. If the person's address is on the do-not-email list, they are closed off (bounced or unsubscribed, whichever the list says) and nothing is sent. Otherwise their email is written: an AI template for their group if there is a good one (from T17), or a hand-written backup email. The person's details are cleaned first (curly braces removed, blanks replaced with "there" or "your company"), so one odd record can never stop the run. The email goes to the pretend email company; its answer is recorded in `sends`; the rulebook moves the person on (next email booked, or closed as bounced); and the diary gets an entry for each step. The whole batch is saved together at the end. If anything goes wrong half-way, all of it is undone, our side only: the email company still remembers what it was handed, so when the batch is retried it gives the same answers and nothing is sent twice.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
