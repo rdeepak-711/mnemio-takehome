@@ -214,3 +214,24 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** the task file's literal patterns (straight apostrophe only, substring denials); returning the next Monday for "until Monday 3rd November"; ignoring a written year.
 **Why:** the review found two inputs that gave a confidently wrong date: "until Monday 3rd November" (said on Friday 30 Oct) returned 2 Nov, and "until 3 November 2027" returned 2026. A wrong date sends a follow-up while the person is still away; `null` falls back to the default wait, which is merely cautious. Curly apostrophes are what real mail clients type, and the straight-only pattern would unsubscribe someone who asked not to be.
 **Cost:** still `null` for phrasings like "back in the office on 3 Nov", "the 1st of December", two-digit years, and an out-of-office that happens to contain "No," anywhere ("…until 3 Nov. No, I won't check email."), since denials are checked across the whole body. These go to the AI or the default wait. The mock provider (T11) should generate out-of-office texts in the supported formats, plus a few unsupported ones on purpose, so both paths are exercised.
+
+## D31 · 2026-10-22 · The mock provider's tables store the idempotency key and reference nothing
+
+**Decided:** `mock_inbox` stores `idempotency_key` (`"<contact_id>:<step>"`) instead of the spec's `contact_id` and `send_id`, and neither `mock_inbox` nor `mock_outbox` has a foreign key. T14 finds the send for a delivered reply through `sends.idempotency_key`. This changes the data model in `spec/site.md`.
+**Considered:** the spec as written (`mock_inbox.contact_id`, `send_id`); foreign keys from the mock tables to `contacts` and `sends`.
+**Why:** the provider is called before our `sends` row is inserted, so it can't know a `send_id`. It also writes on its own connection, outside our send transaction, to behave like an outside service whose work has already happened if our transaction rolls back (the T13 crash test). A foreign key would make the "outside service" depend on our uncommitted rows and fail exactly in the crash case it's meant to model.
+**Cost:** the reply → send link is a text lookup instead of a key, and a reply whose send was rolled back has no send to attach to. T14 must decide what to do with it (it can't happen without a crash between provider and commit).
+
+## D32 · 2026-10-22 · The database refuses impossible contact states, not just the code
+
+**Decided:** `contacts` has CHECKs that `next_action` and `next_action_at` are both set or both null, that `(status, next_action)` is one of the five in-sequence pairs (`new`/`first` … `follow_up_3_sent`/`deactivate`) or a terminal status with no action, and that `segment = role_family || ':' || industry`. `sends` has a CHECK that `idempotency_key = contact_id || ':' || step`.
+**Considered:** leaving these to `transition` (T03) and the seed's invariant checks.
+**Why:** the invariants in the spec are only checked after a run; a CHECK refuses a bad row at the moment it's written, inside the transaction that caused it, so the batch rolls back with the cause in the error. It's the same reasoning as `UNIQUE (contact_id, step)`: a property of the data, not of careful code.
+**Cost:** the pairing of status and next action now lives in two places, `src/lifecycle.ts` and the SQL. Changing the sequence means changing both; the T08 tests fail if they drift apart.
+
+## D33 · 2026-10-22 · No real-time defaults on business tables
+
+**Decided:** no `DEFAULT now()` on `contacts`, `sends`, `replies`, `suppression`, `events`, `sim_clock` or the mock tables. Every timestamp there is simulated time written by the code. Only `llm_cache.created_at`, `llm_usage` and `schema_migrations` use real time.
+**Considered:** `created_at DEFAULT now()` as a convenience.
+**Why:** a real-time default would quietly mix wall-clock time into simulated data, break the "same seed → identical rows" hash in T10, and make the day slider show contacts created "in the future" relative to the simulation.
+**Cost:** every insert must pass its timestamps explicitly; forgetting one is a not-null error rather than a silent default.
