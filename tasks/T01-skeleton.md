@@ -6,7 +6,7 @@ An empty but working TypeScript project: `npm test` runs Vitest, and one test ca
 
 ## Files
 
-Create: `package.json`, `package-lock.json` (made by `npm install`), `tsconfig.json`, `vitest.config.ts`, `docker-compose.yml`, `docker/init.sql`, `.env.example`, `.gitignore`, `src/db/pool.ts`.
+Create: `package.json`, `package-lock.json` (made by `npm install`), `tsconfig.json`, `vitest.config.ts`, `docker-compose.yml`, `docker/Dockerfile`, `docker/init.sql`, `.env.example`, `.gitignore`, `src/db/pool.ts`.
 Tests (written by harness engineer): `tests/unit/smoke.test.ts`, `tests/db/connection.test.ts`.
 
 ## Behaviour
@@ -15,7 +15,7 @@ Tests (written by harness engineer): `tests/unit/smoke.test.ts`, `tests/db/conne
 - Dev dependencies: `typescript`, `vitest`, `tsx`, `@types/node`, `@types/pg`. Dependencies: `pg`, `dotenv`.
 - `tsconfig.json`: `strict: true`, `noUncheckedIndexedAccess: true`, `module: "ESNext"`, `moduleResolution: "Bundler"` (allows extensionless relative imports like `'../../src/db/pool'`, which the tests use, and is what Next.js wants later), target ES2022, `include` covers `src` and `tests`.
 - `vitest.config.ts`: loads `.env` via `dotenv/config` if the file exists. If `TEST_DATABASE_URL` is still unset, it falls back to `postgres://mnemio:mnemio@localhost:5433/mnemio_test` (the `.env.example` value), so `npm test` works on a fresh clone with no `.env`. Files under `tests/db/**` must not run in parallel with each other (`fileParallelism: false`, or a separate project with `poolOptions.threads.singleThread`).
-- `docker-compose.yml`: service `db`, image `postgres:17-alpine`, user/password `mnemio`/`mnemio`, host port **5433** → 5432, a named volume, a healthcheck (`pg_isready`), and `docker/init.sql` mounted into `/docker-entrypoint-initdb.d/` that creates database `mnemio_test` (the default DB is `mnemio`).
+- `docker-compose.yml`: service `db`, image `postgres:17-alpine`, user/password `mnemio`/`mnemio`, host port **5433** → 5432, a named volume, a healthcheck (`pg_isready`), and `docker/init.sql` (creates database `mnemio_test`; the default DB is `mnemio`) copied into `/docker-entrypoint-initdb.d/` by a two-line `docker/Dockerfile` (`build: ./docker`), not bind-mounted (see D19). Init scripts only run on an empty volume.
 - `.env.example`: the full variable list from `spec/site.md`, with `OPENROUTER_API_KEY` empty.
 - `.gitignore`: `node_modules`, `.env`, `.next`, `coverage`, `*.log`.
 - `src/db/pool.ts`: exports `getPool(url: string): pg.Pool` (one pool per URL, cached) and `closePool(): Promise<void>` (ends all pools).
