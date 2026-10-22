@@ -31,3 +31,12 @@ describe('FALLBACK_TEMPLATES', () => {
     expect(new Set(bodies).size).toBe(4);
   });
 });
+
+describe('fallback wording', () => {
+  it('never names a time span, because the waits are configurable', () => {
+    for (const step of STEPS) {
+      const t = FALLBACK_TEMPLATES[step];
+      expect(`${t.subject} ${t.body}`).not.toMatch(/last week|yesterday|days ago|weeks ago/i);
+    }
+  });
+});

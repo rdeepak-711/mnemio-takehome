@@ -23,7 +23,7 @@ import type { Step } from '../lifecycle';
 export const FALLBACK_TEMPLATES: Record<Step, { subject: string; body: string }>;
 ```
 
-Four hand-written emails, one per step, using only the allowed slots (`{{first_name}}`, `{{company}}`, `{{role}}`, `{{industry}}`, `{{last_name}}`). Each must pass `checkContent` after `render` with ordinary values. Plain, short, no spam words; follow-ups refer back to the earlier email.
+Four hand-written emails, one per step, using only the allowed slots (`{{first_name}}`, `{{company}}`, `{{role}}`, `{{industry}}`, `{{last_name}}`). Each must pass `checkContent` after `render` with ordinary values. Plain, short, no spam words; follow-ups refer back to the earlier email without naming a time span ("my earlier email", not "last week"), because the waits are configurable.
 
 ## Part 3 — `src/engine/send.ts`
 
@@ -49,7 +49,7 @@ export async function sendDue(pool: pg.Pool, now: Date, deps: SendDeps): Promise
 
 **Per contact:**
 1. **Suppressed?** `SELECT reason FROM suppression WHERE email = $1`. If found: `transition(status, { type: 'suppressed', reason })`; update the contact (status, `next_action` and `next_action_at` null, `updated_at = now`); one `status_changed` event `{ from, to, reason: 'suppressed' }`. No email, no provider call, no `sends` row. Counts as `suppressed`.
-2. **Write the email.** `step = contact.nextAction`. `vars = contactVars(contact)`: the five slot values with every `{` and `}` removed (so a company called `{{evil}}` can't break a template; D46). If `getTemplate` exists and returns a template, render it; if rendering throws or `checkContent` finds any problem, use the fallback instead. With the fallback, `template_source = 'fallback'`; if the fallback itself throws or fails `checkContent`, throw (a bug in our own template; the run stops loudly).
+2. **Write the email.** `step = contact.nextAction`. `vars = contactVars(contact)`: the five slot values with every `{` and `}` removed (so a company called `{{evil}}` can't break a template; D46), then trimmed; an empty result gets a stand-in (`first_name` → `there`, `company` → `your company`, `role` → `your role`, `last_name` → `there`), so contact data can never stop the run (D47). `industry` is shown as text: `saas` → `SaaS`, `ecommerce` → `e-commerce`, the rest unchanged. If `getTemplate` exists and returns a template, render it; if rendering throws or `checkContent` finds any problem, use the fallback instead. With the fallback, `template_source = 'fallback'`; if the fallback itself throws or fails `checkContent`, throw (a bug in our own template; the run stops loudly).
 3. **Hand it over.** `provider.send({ idempotencyKey: '<id>:<step>', to: email, subject, body, now })`. Then `await deps.afterProviderCall?.(contact)`.
 4. **Record the send.** Plain `INSERT INTO sends (contact_id, step, idempotency_key, outcome, subject, body, template_source, sent_at = now) RETURNING id` — no `ON CONFLICT`: a duplicate can only mean a bug got past the lock, and it must fail loudly, not leave the contact due forever (D46). Event `sent` `{ step, outcome, send_id }`.
 5. **Move the contact on.**

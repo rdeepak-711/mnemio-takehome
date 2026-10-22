@@ -4,7 +4,7 @@ import { getPool, closePool } from '../../src/db/pool';
 import { resetDb } from '../../src/db/migrate';
 import { loadConfig, type Config } from '../../src/config';
 import { createProvider } from '../../src/mock/provider';
-import { sendDue, type SendDeps, type Template } from '../../src/engine/send';
+import { contactVars, sendDue, type SendDeps, type Template } from '../../src/engine/send';
 import { checkInvariants } from '../../src/invariants';
 import { seed } from '../../src/seed/seed';
 
@@ -373,4 +373,58 @@ describe('on seeded data', () => {
     ).toBe(0);
     expect(await checkInvariants(pool)).toEqual([]);
   }, 60_000);
+});
+
+describe('contact data never stops the run (probe after build)', () => {
+  it.each([
+    ['an empty first name', { firstName: '' }],
+    ['a company that is only braces', { company: '{{}}' }],
+    ['a first name of spaces', { firstName: '   ' }],
+  ])('%s still gets an email with a sensible stand-in', async (_label, opts) => {
+    await contact('new', opts);
+    expect((await sendDue(pool, NOW, deps())).sent).toBe(1);
+    const [s] = await q<{ subject: string; body: string }>('SELECT subject, body FROM sends');
+    expect(s!.body).toMatch(/^Hi \S/);
+    expect(`${s!.subject} ${s!.body}`).not.toMatch(/[{}]|\s,|\s{3,}/);
+  });
+});
+
+describe('contactVars', () => {
+  const base = {
+    id: 1,
+    email: 'a@b.example',
+    firstName: 'Ann',
+    lastName: 'Lee',
+    company: 'Acme',
+    industry: 'saas' as const,
+    role: 'CTO',
+    roleFamily: 'tech' as const,
+    timezone: 'Europe/London',
+    segment: 'tech:saas',
+    status: 'new' as const,
+    nextAction: 'first' as const,
+    nextActionAt: NOW,
+  };
+
+  it.each([
+    ['saas', 'SaaS'],
+    ['ecommerce', 'e-commerce'],
+    ['fintech', 'fintech'],
+    ['healthcare', 'healthcare'],
+    ['logistics', 'logistics'],
+  ] as const)('industry %s reads as %s', (industry, text) => {
+    expect(contactVars({ ...base, industry, segment: `tech:${industry}` }).industry).toBe(text);
+  });
+
+  it('empty values get stand-ins, never an empty string', () => {
+    const vars = contactVars({ ...base, firstName: ' ', company: '{}', role: '' });
+    expect(vars.first_name).toBe('there');
+    expect(vars.company).toBe('your company');
+    expect(vars.role).toBe('your role');
+    for (const v of Object.values(vars)) expect(v.trim().length).toBeGreaterThan(0);
+  });
+
+  it('trims surrounding spaces', () => {
+    expect(contactVars({ ...base, firstName: '  Ann ' }).first_name).toBe('Ann');
+  });
 });
