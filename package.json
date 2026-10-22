@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src tests vitest.config.ts",
     "format:check": "prettier --check src tests vitest.config.ts",
-    "db:reset": "tsx src/db/reset.ts"
+    "db:reset": "tsx src/db/reset.ts",
+    "seed": "tsx src/seed/run.ts"
   },
   "dependencies": {
     "@faker-js/faker": "10.6.0",
