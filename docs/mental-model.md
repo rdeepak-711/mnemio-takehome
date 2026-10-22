@@ -86,6 +86,10 @@ The engine never sends real email. It hands each email to `src/mock/provider.ts`
 
 It behaves like an outside company. It keeps its own records (`mock_outbox`, `mock_inbox`) and writes them on its own connection, so if the engine's work is undone after a crash, the company's record that it already got the email stays, just as a real provider wouldn't forget. Sending the same key again gets the first answer back and creates nothing new, which is how a retry after a crash avoids a second email. About 10% of replies to the last follow-up arrive late, 8–21 days after it, when the person has already been given up on; that way the rule "someone we gave up on can still reply" is exercised in every run (D44). The replies come from a bank of written texts, including deliberately tricky ones meant for the AI; a test makes sure the simple rules never give any of them a wrong label.
 
+## Taking a turn without two workers grabbing the same person (built in T12)
+
+Several workers send at once. Before a worker emails anyone, it takes a batch of up to 200 people whose next email is due, and puts a lock on each of those rows in the database. Another worker asking at the same moment doesn't wait for those rows; it skips them and takes the next people in line. The lock lasts until the worker finishes its batch and saves (or gives up and undoes everything), so no two workers ever work on the same person at the same time. People who are finished, or whose only remaining step is "give up on them", are never taken. Someone on the do-not-email list is still taken, because the send step needs to see them to close them off properly.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
@@ -104,4 +108,5 @@ It behaves like an outside company. It keeps its own records (`mock_outbox`, `mo
 - **Invariant:** a rule that must be true of the data at all times, e.g. "a bounced contact has a bounced email".
 - **Hash:** a fixed scramble of some text into a number; the same text always gives the same number.
 - **Connection pool:** a small set of open database connections that code borrows and returns.
+- **Row lock:** a mark the database puts on a row so other transactions can't take it until the lock is released.
 - **Transaction:** a group of database changes that are kept all together or not at all.

@@ -312,3 +312,10 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** leaving all replies at 12–72 hours (the T11 build); a fixed late delay such as 8–21 days.
 **Why:** with only 12–72 hour delays a reply always arrives before the 7-day deactivation wait ends, so the rule "a deactivated contact can still reply and becomes `replied`" (T03) would never happen in a run and would be a claim, not a tested behaviour (Deepak, 23 Oct). Tying the delay to the last wait keeps replies late whatever `WAIT_DAYS` is set to.
 **Cost:** the provider now parses the step out of the key, so it depends on the key format `"<contact_id>:<step>"`, which the `sends_idempotency_key_check` constraint already guarantees.
+
+## D45 · 2026-10-23 · `claimDue` takes the caller's client and leaves deactivation and suppression to others
+
+**Decided:** `src/engine/claim.ts` `claimDue(client, now, limit)` runs one `SELECT … ORDER BY next_action_at, id LIMIT $limit FOR UPDATE SKIP LOCKED` on a client the caller has already opened a transaction on. It returns only sending steps (`first` … `follow_up_3`); `follow_up_3_sent` contacts (next action `deactivate`) are left to T15. Suppressed addresses are returned, and the send step (T13) handles them (D34). `limit` must be an integer ≥ 1.
+**Considered:** `claimDue` opening and committing its own transaction; plain `FOR UPDATE` without `SKIP LOCKED`; filtering suppressed addresses in the claim query.
+**Why:** the lock must last until the contact's send, record and status change commit together, so the claim has to live inside the send step's transaction, not end with its own. Without `SKIP LOCKED`, a second worker would wait for the first instead of taking other contacts, so four workers would run one at a time. Filtering suppressed addresses in the query would leave those contacts due forever; claiming them lets T13 move them to `bounced` or `unsubscribed` through `transition()`.
+**Cost:** a caller that forgets `BEGIN` gets a lock that ends with the statement; only T13 calls `claimDue`, and its tests cover parallel workers.

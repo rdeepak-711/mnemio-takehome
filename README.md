@@ -1,6 +1,6 @@
 # Mnemio cold-email engine
 
-> **Status: in progress (23 Oct 2026).** Tasks T01–T11 are built and tested: the project setup, the rulebooks, the database, the simulated clock, the 10,000-contact seed and the mock email provider. The engine that sends emails on a schedule (T12–T18), the AI (T16–T17), the report (T19), the full 10,000-contact run (T20) and the dashboard (T21) are next. This README describes what exists today and is completed in T23.
+> **Status: in progress (23 Oct 2026).** Tasks T01–T12 are built and tested: the project setup, the rulebooks, the database, the simulated clock, the 10,000-contact seed and the mock email provider. The engine that sends emails on a schedule (T12–T18), the AI (T16–T17), the report (T19), the full 10,000-contact run (T20) and the dashboard (T21) are next. This README describes what exists today and is completed in T23.
 
 ## What the system does
 
@@ -16,7 +16,7 @@ npm install
 cp .env.example .env             # the defaults work; the AI key is only needed from T16 on
 npm run db:reset                 # build the tables
 npm run seed                     # 10,000 contacts with history; prints "invariants: ok"
-npm test                         # 534 automated tests
+npm test                         # 550 automated tests
 ```
 
 `npm run seed` takes about 1 second on a MacBook. Running it twice without `db:reset` is refused.
@@ -32,7 +32,7 @@ TypeScript on Node, Postgres as both the database and the work queue, plain SQL 
 | 0 Skeleton | T01 | Project, Docker Postgres, test runner, connection pool | built |
 | 1 Pure rules | T02–T07 | Settings check, lifecycle rulebook, schedule, templates, segments, reply rules | built |
 | 2 Data | T08–T11 | Tables, simulated clock, seed + consistency checker, mock provider | built |
-| 3 Engine | T12–T15 | Claim due contacts, send, process replies, deactivate | next |
+| 3 Engine | T12–T15 | Claim due contacts, send, process replies, deactivate | T12 built, rest next |
 | 4 AI | T16–T17 | OpenRouter client, sequence writer, reply classifier | planned |
 | 5 Whole system | T18–T20 | Tick + advance, report, timed 10,000-contact run | planned |
 | 6 Dashboard | T21–T22 | Funnel with day slider, contact timelines; mailbox warm-up bonus | planned |
@@ -66,12 +66,12 @@ Statuses: `new`, `first_sent`, `follow_up_1_sent`, `follow_up_2_sent`, `follow_u
 
 ## How double sends are stopped
 
-Four layers, the first three built:
+Four layers, all built:
 
 1. **The mock provider remembers every email by its key** (`"<contact_id>:<step>"`). Sending the same key again returns the first answer and creates nothing new, so a retry after a crash is harmless.
 2. **The provider writes on its own connection**, like a real outside service: if our transaction rolls back, its record of the email survives.
 3. **The database allows one row per contact per step** (`UNIQUE (contact_id, step)` on `sends`).
-4. *(T12–T13)* **Workers claim due contacts with `FOR UPDATE SKIP LOCKED`**, so two workers never work on the same contact at once, and each contact's send, record and status change commit together.
+4. **Workers claim due contacts with `FOR UPDATE SKIP LOCKED`** (`src/engine/claim.ts`), so two workers never work on the same contact at once; other workers skip locked rows instead of waiting. *(T13 makes each batch's sends, records and status changes commit together.)*
 
 ## Seed data
 

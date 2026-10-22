@@ -24,7 +24,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - ✅ T11 Mock provider (bounces, replies with true label, idempotency)
 
 ## Layer 3 — Engine
-- ☐ T12 Claim with SKIP LOCKED
+- ✅ T12 Claim with SKIP LOCKED
 - ☐ T13 Send step (transaction, parallel workers, crash test)
 - ☐ T14 Reply delivery + processing
 - ☐ T15 Deactivation
