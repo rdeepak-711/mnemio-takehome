@@ -186,3 +186,10 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** no formatter (the state until now); Prettier's defaults (double quotes, 80 characters).
 **Why:** Deepak's editor formatted `src/lifecycle.ts` on save with its own defaults, turning a reviewed file into a 133-line diff that blocked a merge. With the settings in the repo, the editor, the junior and Claude all produce the same layout. Single quotes and 120 characters match what was already written, so the one-off reformat was 47 lines.
 **Cost:** one more dev dependency. A file only stays stable if everyone formats with this config.
+
+## D27 · 2026-10-22 · Dates move in 24-hour steps on the UTC timestamp; an out-of-office lands at the return date + 1 day
+
+**Decided:** `nextActionAt` and `oooReschedule` in `src/schedule.ts` add whole days as `days × 24 h` to the timestamp. An out-of-office with a return date moves the due date to exactly `returnDate + 1 day` (so a return date of `2026-11-04T00:00Z` gives `2026-11-05T00:00Z`), never earlier than the date that was already due. Both functions take `now` as a parameter; a test fails if the file calls `new Date()` with no arguments or `Date.now()`.
+**Considered:** calendar-day arithmetic in a local timezone; snapping the out-of-office date to a sending hour such as 09:00.
+**Why:** UTC 24-hour steps give the same answer on every machine and need no date library. The simulated clock decides "now", so the schedule must never read the real one. Snapping to a sending hour belongs with timezone send windows (T22), not here.
+**Cost:** a contact moved by an out-of-office reply gets its email at the return date's time of day (often midnight UTC) instead of around 09:00. Harmless in the simulation; a real system would snap to working hours.
