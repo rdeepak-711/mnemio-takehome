@@ -256,3 +256,24 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** read the time, add a day in TypeScript, write it back; the spec's narrower check of only `src/engine` and `src/mock`.
 **Why:** read-then-write loses updates when two callers advance at once (both read Monday, both write Tuesday); one statement can't. A test proves ten simultaneous `advance(1)` calls move exactly ten days. Scanning all of `src/` catches a real-clock call wherever it's added, including the seed and the report, which the narrower check would have missed.
 **Cost:** the scan is a text match, so a real-clock call written in an unusual way (for example through an alias) would get past it. `src/ai/` is trusted by folder, not checked.
+
+## D37 · 2026-10-22 · The seed builds history through `transition()`, with a pinned status mix
+
+**Decided:** the seed walks every contact from `new` through `transition()` (the engine's own rulebook) to a target status, writing the sends, replies, suppression rows and events each step implies. The mix is pinned: 60% new; 12 / 8 / 5 / 3% at the four in-sequence statuses; 5% replied, 2% bounced, 2% unsubscribed, 3% deactivated, split exactly by largest remainder. New contacts start in daily waves of 1,000 from `SIM_START`. About a third of in-sequence contacts are already due at `SIM_START`. All randomness comes from one Faker instance seeded with `SEED`; `@faker-js/faker` is pinned at 10.6.0 exactly.
+**Considered:** writing statuses straight into `contacts` and generating matching rows separately; all 10,000 contacts starting at `new`; an unpinned Faker version.
+**Why:** if the seed writes statuses itself, the seed and the engine can disagree about what a status means, and T20's consistency checks would fail on seed data rather than engine bugs. Starting with history means the dashboard and the engine have mid-sequence, terminal and due contacts on day one. Waves of 1,000 keep the first ticks to a realistic size. Faker's output for a seed changes between versions, so an unpinned version would break "same seed, same rows".
+**Cost:** walking each contact through `transition()` is slower than writing statuses, so the inserts are batched to stay under 30 seconds. Upgrading Faker changes the seeded data.
+
+## D38 · 2026-10-22 · `checkInvariants` is one shared checker, tested by breaking data on purpose
+
+**Decided:** `src/invariants.ts` exports `checkInvariants(db, limit = 50)`: read-only SQL, one query per invariant (spec invariants 1–6 plus a 7th, every send has a matching `mock_outbox` row with the same outcome), returning numbered violations. `npm run seed` runs it after seeding; T18 and T20 reuse it. Its tests build a small clean dataset and then break it one way at a time, asserting the exact invariant number reported.
+**Considered:** each later task writing its own consistency queries; testing the checker only on seed output.
+**Why:** a checker that only ever sees good data could return `[]` for everything and still pass. Breaking the data on purpose proves each check actually fires, and asserting the exact number proves it doesn't fire for the wrong reason.
+**Cost:** the checker scans whole tables, so it is a verification tool, not something to run inside every tick.
+
+## D39 · 2026-10-22 · Seeded replies don't count toward classifier accuracy
+
+**Decided:** T19's accuracy figure counts only replies with `received_at ≥ SIM_START`. Seeded replies get `label = true_label`.
+**Considered:** counting all replies.
+**Why:** seeded labels are copied from the truth, so including them would inflate accuracy with numbers the classifier never produced.
+**Cost:** the accuracy figure has nothing to report until the simulation produces replies.
