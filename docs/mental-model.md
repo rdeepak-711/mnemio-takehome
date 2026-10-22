@@ -1,6 +1,6 @@
 # Mental model
 
-**Status: PLANNED.** Describes the system as designed. It will be revised as each layer is built.
+**Status: T01–T11 built (23 Oct).** Describes the system as designed; the sections marked "built in Txx" describe code that exists. The engine (T12+) is still planned.
 
 ## What it is, in one paragraph
 
@@ -84,7 +84,7 @@ The simulation's "today" is one row in the database, and `src/clock.ts` is the o
 
 The engine never sends real email. It hands each email to `src/mock/provider.ts`, a pretend email company, which answers "accepted" or "bounced" and sometimes schedules a reply to arrive 12–72 hours later. Each decision comes from scrambling the seed number together with the email's unique key (for bounces, the address) into a number between 0 and 1. So the same email always gets the same answer, whichever worker sends it and in whatever order; that's what lets four workers run at once and still give repeatable results. About 3% of addresses are "dead" and bounce whatever is sent to them.
 
-It behaves like an outside company. It keeps its own records (`mock_outbox`, `mock_inbox`) and writes them on its own connection, so if the engine's work is undone after a crash, the company's record that it already got the email stays, just as a real provider wouldn't forget. Sending the same key again gets the first answer back and creates nothing new, which is how a retry after a crash avoids a second email. The replies come from a bank of written texts, including deliberately tricky ones meant for the AI; a test makes sure the simple rules never give any of them a wrong label.
+It behaves like an outside company. It keeps its own records (`mock_outbox`, `mock_inbox`) and writes them on its own connection, so if the engine's work is undone after a crash, the company's record that it already got the email stays, just as a real provider wouldn't forget. Sending the same key again gets the first answer back and creates nothing new, which is how a retry after a crash avoids a second email. About 10% of replies to the last follow-up arrive late, 8–21 days after it, when the person has already been given up on; that way the rule "someone we gave up on can still reply" is exercised in every run (D44). The replies come from a bank of written texts, including deliberately tricky ones meant for the AI; a test makes sure the simple rules never give any of them a wrong label.
 
 ## Words used on this page
 
