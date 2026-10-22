@@ -98,10 +98,7 @@ describe('OpenRouter settings', () => {
 
   it('splits, trims and drops empty model names', () => {
     const models = ' a/one:free , ,b/two:free,';
-    expect(loadConfig({ ...base, OPENROUTER_MODELS: models }).openrouterModels).toEqual([
-      'a/one:free',
-      'b/two:free',
-    ]);
+    expect(loadConfig({ ...base, OPENROUTER_MODELS: models }).openrouterModels).toEqual(['a/one:free', 'b/two:free']);
   });
 });
 

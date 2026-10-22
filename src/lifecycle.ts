@@ -1,14 +1,29 @@
 import type { Label } from './labels';
 
-export const STATUSES = ['new','first_sent','follow_up_1_sent','follow_up_2_sent','follow_up_3_sent',
-                         'replied','bounced','unsubscribed','deactivated'] as const;
-export type Status = typeof STATUSES[number];
-export const STEPS = ['first','follow_up_1','follow_up_2','follow_up_3'] as const;
-export type Step = typeof STEPS[number];
+export const STATUSES = [
+  'new',
+  'first_sent',
+  'follow_up_1_sent',
+  'follow_up_2_sent',
+  'follow_up_3_sent',
+  'replied',
+  'bounced',
+  'unsubscribed',
+  'deactivated',
+] as const;
+export type Status = (typeof STATUSES)[number];
+export const STEPS = ['first', 'follow_up_1', 'follow_up_2', 'follow_up_3'] as const;
+export type Step = (typeof STEPS)[number];
 export type NextAction = Step | 'deactivate' | null;
 
-export const IN_SEQUENCE: readonly Status[] = ['new','first_sent','follow_up_1_sent','follow_up_2_sent','follow_up_3_sent'];
-export const TERMINAL: readonly Status[] = ['replied','bounced','unsubscribed','deactivated'];
+export const IN_SEQUENCE: readonly Status[] = [
+  'new',
+  'first_sent',
+  'follow_up_1_sent',
+  'follow_up_2_sent',
+  'follow_up_3_sent',
+];
+export const TERMINAL: readonly Status[] = ['replied', 'bounced', 'unsubscribed', 'deactivated'];
 
 export type LifecycleEvent =
   | { type: 'sent'; step: Step }
@@ -52,10 +67,13 @@ const isInSequence = (status: Status) => IN_SEQUENCE.includes(status);
 
 function describeEvent(event: LifecycleEvent): string {
   switch (event.type) {
-    case 'sent': return `sent:${event.step}`;
-    case 'reply': return `reply:${event.label}`;
+    case 'sent':
+      return `sent:${event.step}`;
+    case 'reply':
+      return `reply:${event.label}`;
     case 'bounced':
-    case 'deactivate_due': return event.type;
+    case 'deactivate_due':
+      return event.type;
   }
 }
 
@@ -84,7 +102,10 @@ function applyReply(status: Status, label: Label): { status: Status; nextAction:
   }
 }
 
-export function transition(status: Status, event: LifecycleEvent): { status: Status; nextAction: NextAction | 'unchanged' } {
+export function transition(
+  status: Status,
+  event: LifecycleEvent,
+): { status: Status; nextAction: NextAction | 'unchanged' } {
   switch (event.type) {
     case 'sent':
       if (expectedStep(status) !== event.step) throw invalid(status, event);
