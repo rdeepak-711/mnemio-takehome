@@ -182,6 +182,35 @@ describe('findReturnDate', () => {
   });
 });
 
+describe('findReturnDate: review fixes (a wrong date is worse than null)', () => {
+  const now = at('2026-10-30T09:00:00Z'); // a Friday
+
+  it.each([
+    ['until Nov 3rd', '2026-11-03'],
+    ['until 3rd November', '2026-11-03'],
+    ['back on the 1st of December', null],
+    ['until 21st Nov', '2026-11-21'],
+    ['until 2nd Nov', '2026-11-02'],
+  ] as const)('ordinal suffix %j → %s', (text, expected) => {
+    const result = findReturnDate(text, now);
+    expect(result ? result.toISOString() : null).toBe(expected ? day(expected).toISOString() : null);
+  });
+
+  it('a weekday followed by a date uses the date ("until Monday 3rd November" → 3 Nov, not the next Monday)', () => {
+    expect(findReturnDate('until Monday 3rd November', now)?.toISOString()).toBe(day('2026-11-03').toISOString());
+    expect(findReturnDate('back on Tuesday, 10 Nov', now)?.toISOString()).toBe(day('2026-11-10').toISOString());
+  });
+
+  it('an explicit year is used ("until 3 November 2027" → 2027)', () => {
+    expect(findReturnDate('until 3 November 2027', now)?.toISOString()).toBe(day('2027-11-03').toISOString());
+    expect(findReturnDate('until November 3, 2027', now)?.toISOString()).toBe(day('2027-11-03').toISOString());
+  });
+
+  it('an explicit year in the past is kept as written (oooReschedule then ignores it)', () => {
+    expect(findReturnDate('until 3 November 2025', now)?.toISOString()).toBe(day('2025-11-03').toISOString());
+  });
+});
+
 describe('src/classify/rules.ts', () => {
   it('never reads the real clock (no `new Date()` without arguments, no Date.now())', () => {
     const source = readFileSync(new URL('../../src/classify/rules.ts', import.meta.url), 'utf8');
