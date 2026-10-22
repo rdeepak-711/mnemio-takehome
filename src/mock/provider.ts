@@ -8,8 +8,9 @@ export type SendResult = { outcome: 'accepted' | 'bounced' };
 export type Provider = { send(input: SendInput): Promise<SendResult> };
 
 export const OOO_HEADERS = { 'Auto-Submitted': 'auto-replied' } as const;
+export const LATE_REPLY_SHARE = 0.1;
 
-type ProviderConfig = Pick<Config, 'seed' | 'bounceRate' | 'replyRate' | 'replyMix'>;
+type ProviderConfig = Pick<Config, 'seed' | 'bounceRate' | 'replyRate' | 'replyMix' | 'waitDays'>;
 type Reply = { body: string; headers: Record<string, string>; label: ReplyLabel; deliverAt: Date };
 
 const MINUTE_MS = 60 * 1000;
@@ -42,7 +43,13 @@ function planReply(config: ProviderConfig, key: string, now: Date): Reply | null
   const label = pickLabel(draw(seed, 'label', key), config.replyMix);
   const bank = REPLY_BANK[label];
   const template = bank[Math.floor(draw(seed, 'text', key) * bank.length)]!;
-  const delayMinutes = between(draw(seed, 'delay', key), MIN_DELAY_MINUTES, MAX_DELAY_MINUTES);
+  // Some replies to follow-up 3 land after the last wait, i.e. after deactivation (D44).
+  const step = key.slice(key.lastIndexOf(':') + 1);
+  const late = step === 'follow_up_3' && draw(seed, 'late', key) < LATE_REPLY_SHARE;
+  const lastWaitMinutes = config.waitDays[3] * 24 * 60;
+  const delayMinutes = late
+    ? between(draw(seed, 'delay', key), lastWaitMinutes + 24 * 60, lastWaitMinutes + 14 * 24 * 60)
+    : between(draw(seed, 'delay', key), MIN_DELAY_MINUTES, MAX_DELAY_MINUTES);
   const deliverAt = new Date(now.getTime() + delayMinutes * MINUTE_MS);
   if (label !== 'out_of_office') return { body: template.body, headers: {}, label, deliverAt };
 
