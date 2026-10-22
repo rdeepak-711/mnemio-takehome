@@ -122,3 +122,28 @@ describe('other checks', () => {
     expect(() => loadConfig({ ...base, SEND_BATCH_SIZE: '0' })).toThrow(/SEND_BATCH_SIZE/);
   });
 });
+
+describe('review fixes', () => {
+  it.each(['1', 'Nov 2 2026', '2026-11-02', '2026-11-02T09:00:00', '2026-13-02T09:00:00Z'])(
+    'throws naming SIM_START on %s (not ISO with a zone)',
+    (value) => {
+      expect(() => loadConfig({ ...base, SIM_START: value })).toThrow(/SIM_START/);
+    },
+  );
+
+  it('reads a SIM_START offset as the same moment in UTC', () => {
+    const simStart = loadConfig({ ...base, SIM_START: '2026-11-02T14:30:00+05:30' }).simStart;
+    expect(simStart.toISOString()).toBe('2026-11-02T09:00:00.000Z');
+  });
+
+  it('throws naming SEED when it is too big to hold exactly', () => {
+    expect(() => loadConfig({ ...base, SEED: '99999999999999999999' })).toThrow(/SEED/);
+  });
+
+  it('uses the default when an optional value is empty or only spaces', () => {
+    const config = loadConfig({ ...base, AI_RPM: '', SEND_BATCH_SIZE: '  ', WAIT_DAYS: '' });
+    expect(config.aiRpm).toBe(20);
+    expect(config.sendBatchSize).toBe(200);
+    expect(config.waitDays).toEqual([3, 5, 7, 7]);
+  });
+});
