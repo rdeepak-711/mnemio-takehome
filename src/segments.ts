@@ -1,3 +1,5 @@
+import { escapeRegExp } from './regex';
+
 export const ROLE_FAMILIES = ['founder', 'sales', 'ops_finance', 'tech'] as const;
 export type RoleFamily = (typeof ROLE_FAMILIES)[number];
 export const INDUSTRIES = ['saas', 'ecommerce', 'fintech', 'healthcare', 'logistics'] as const;
@@ -33,10 +35,6 @@ const RULES: readonly { family: RoleFamily; keywords: readonly string[] }[] = [
   { family: 'sales', keywords: ['sales', 'revenue', 'business development', 'account executive'] },
   { family: 'ops_finance', keywords: ['cfo', 'coo', 'finance', 'operations', 'operating', 'ops', 'controller'] },
 ];
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 // Whole words only, so "cto" misses "director" and "ops" misses "devops".
 const PATTERNS = RULES.map(({ family, keywords }) => ({
