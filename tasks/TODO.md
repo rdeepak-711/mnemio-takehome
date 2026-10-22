@@ -7,7 +7,7 @@ Loop per task: harness engineer writes `T0x-*.md` + failing tests → junior mak
 Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished and submittable by Fri 23 Oct night.** Order: engine T01–T20 → plain dashboard (KPIs, contacts, controls) → T22 → the visual "orchestration" view (animated funnel, day slider, journey of sends/bounces/replies) last → T23 README. If time runs short, T21b extras go first, then T22.
 
 ## Layer 0 — Skeleton
-- ☐ T01 Repo skeleton (package, tsconfig, Vitest, Docker Postgres, pool) → `tasks/T01-skeleton.md`
+- ✅ T01 Repo skeleton (package, tsconfig, Vitest, Docker Postgres, pool) → `tasks/T01-skeleton.md`
 
 ## Layer 1 — Pure logic
 - ☐ T02 Config loader → `tasks/T02-config.md`

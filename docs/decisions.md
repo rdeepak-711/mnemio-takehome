@@ -130,3 +130,10 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** marking the contact `send_failed` and moving on, as the reviewer suggested.
 **Why:** there are only 9 statuses, and a "failed" contact would be stuck in the sequence with no next action, so the run would never finish. The fallbacks are hand-written and tested, so their failing is a code bug, and a bug should stop the run loudly rather than leave contacts behind.
 **Cost:** one bad fallback template stops the whole run until it's fixed.
+
+## D19 · 2026-10-22 · The Postgres image is built with init.sql inside it, not bind-mounted
+
+**Decided:** `docker-compose.yml` builds the `db` image from `docker/Dockerfile` (`FROM postgres:17-alpine` + `COPY init.sql`).
+**Considered:** bind-mounting `docker/init.sql` (the T01 task file's first version); adding `/Volumes/asus` to Colima's shared folders.
+**Why:** Colima only shares `$HOME` with its VM, so a bind mount from a repo on an external drive arrives as an empty folder and Postgres won't start. A build sends the folder to Docker, so it works from any path on any machine, including an evaluator's. Changing Colima's config would only fix this one laptop.
+**Cost:** one extra file, and editing `init.sql` needs `docker compose down -v` then `up -d --build db` to take effect.

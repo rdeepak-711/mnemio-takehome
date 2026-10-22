@@ -1,0 +1,24 @@
+services:
+  db:
+    # postgres:17-alpine with docker/init.sql baked in. Not a bind mount: Colima only shares
+    # $HOME with its VM, so a bind mount from a repo elsewhere (e.g. an external drive) arrives
+    # as an empty directory. A build context is sent to the daemon, so it works from any path.
+    # init.sql only runs on an empty volume; after editing it: docker compose down -v && up --build.
+    build: ./docker
+    image: mnemio-db:17
+    environment:
+      POSTGRES_USER: mnemio
+      POSTGRES_PASSWORD: mnemio
+      POSTGRES_DB: mnemio
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mnemio -d mnemio"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
