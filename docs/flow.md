@@ -1,6 +1,6 @@
 # Execution flow
 
-**Status: PLANNED, partly built.** T01 (DB pool), T02 (config), T03 (lifecycle), T04 (schedule), T05 (render), T06 (segments) and T07 (rules) exist, so Layer 1 (pure logic) is complete; T08 (schema and migrations) has started Layer 2; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
+**Status: PLANNED, partly built.** T01 (DB pool), T02 (config), T03 (lifecycle), T04 (schedule), T05 (render), T06 (segments) and T07 (rules) exist, so Layer 1 (pure logic) is complete; T08 (schema and migrations) and T09 (simulated clock) have started Layer 2; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
 
 ## Entry points
 
@@ -38,7 +38,7 @@ Tests call these directly: `tests/unit/config.test.ts` passes made-up env object
 
 ```
 tick
- ├─ getNow(db)                                   src/clock.ts           [DB]
+ ├─ getNow(db)                                   src/clock.ts:8         [DB] (BUILT T09)
  ├─ deliverReplies(db, now)                      src/engine/replies.ts  [DB]  mock_inbox → replies
  ├─ processReplies(db, now, classifier)          src/engine/replies.ts
  │    ├─ classifyByRules(reply, now)             src/classify/rules.ts:79 (pure, BUILT T07)
@@ -82,3 +82,4 @@ tick
 - **T06:** `src/segments.ts`: `roleFamily` (:45) tries each rule in `RULES` (:32) in order via the regexes in `PATTERNS` (:40), defaulting to `ops_finance`; `segmentOf` (:50) builds `'<family>:<industry>'`; `allSegments` (:54) lists all 20; `ROLE_TITLES` (:8) is the pool the seed draws from. Imports only `escapeRegExp` from `src/regex.ts`. Planned callers: `src/seed/seed.ts` (T10) sets each contact's `role_family` and `segment`; `src/ai/sequences.ts` (T17) asks the AI for one sequence per segment. Not called from anywhere except tests yet.
 - **T07:** `src/classify/rules.ts`: `classifyByRules` (:79) normalises apostrophes (`normalise` :31), then checks `headerIsAuto` (:35), the unsubscribe and negation patterns, then the out-of-office phrase and denials; returns `null` for anything else. `findReturnDate` (:67) runs one combined `RETURN_DATE` regex (:16) and validates every date with `utcDate` (:41). No imports. Planned caller: `src/engine/replies.ts` (T14) `processReplies` tries the rules first and sends only the `null`s to `classifyBatch` (T17). Not called from anywhere except tests yet.
 - **T08:** `src/db/migrations/001_init.sql` creates the 11 tables; the constraints are the second line of defence (D32): `sends_contact_id_step_key` is the double-send guard, `contacts_status_next_action_check` refuses a status with the wrong next action. `src/db/migrate.ts` `migrate` (:12) applies each unrecorded `.sql` file in its own transaction together with its `schema_migrations` row; `resetDb` (:43) drops the schema and calls `migrate`. `src/db/reset.ts` is the `npm run db:reset` entry: `.env` → `loadConfig` → `getPool` → `resetDb` → `closePool` [DB]. The mock tables (`mock_outbox`, `mock_inbox`) have no foreign keys and key everything by `idempotency_key` (D31): they belong to the "outside service", not to us. Planned callers of `resetDb`: every DB test's `beforeEach`, and T10's seed.
+- **T09:** `src/clock.ts`: `getNow` (:8) reads the one `sim_clock` row and throws `sim_clock is not set; run npm run seed` if it's missing; `setNow` (:15) upserts it; `advance` (:22) moves it forward in a single `UPDATE … RETURNING` so simultaneous calls can't lose a day. All take a `Queryable` (a pool or a transaction's client) [DB]. `tests/unit/no-real-clock.test.ts` fails if any file under `src/` outside `src/ai/` reads the real clock. Planned callers: the seed (T10) calls `setNow(SIM_START)`, every tick (T18) starts with `getNow`, and the `advance` CLI loops `advance(1)` + tick.
