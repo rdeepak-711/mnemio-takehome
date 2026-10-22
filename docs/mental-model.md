@@ -42,6 +42,12 @@ When someone replies "I'm out of office", `oooReschedule` decides the new date. 
 
 Neither function looks at the real clock. "Now" is always handed in, because in this system "now" is the simulated clock, not the time on your laptop. That's what lets the same run give the same result on any machine.
 
+## Turning a template into one person's email (built in T05)
+
+The AI writes one email sequence per segment, with blanks in it like `Hi {{first_name}}, I saw {{company}} is hiring`. `render` in `src/templates/render.ts` fills those blanks from one contact's record. Only five blanks exist (first name, last name, company, role, industry), because those are the only facts we have about a person. A blank with any other name, or one we have no value for, stops with an error instead of sending an email with a hole in it. Blanks are filled in one go, so if a company is literally named `{{evil}}`, that text goes in as-is and is never treated as another blank.
+
+Before any email goes out, `checkContent` reads it like a strict proofreader and lists everything wrong: a blank that wasn't filled, an empty or very long subject, a very long body, or a word spam filters dislike ("guarantee", "act now", "winner" and a few more). An empty list means it's fine to send. Filling and checking are separate on purpose: the same check is also used on AI-written templates before they're ever used.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
@@ -50,4 +56,5 @@ Neither function looks at the real clock. "Now" is always handed in, because in 
 - **Idempotency key:** a label that is unique per email ("contact 812, follow-up 1"), so sending it twice can be detected and ignored.
 - **Environment variable:** a named setting given to the program from outside its code, e.g. `WAIT_DAYS=3,5,7,7`.
 - **Terminal status:** a finished status (`replied`, `bounced`, `unsubscribed`, `deactivated`); no more emails are ever sent.
+- **Slot:** a blank in a template, written `{{name}}`, filled from the contact's record.
 - **Fallback:** the simpler option used when the AI fails or the quota is used up.
