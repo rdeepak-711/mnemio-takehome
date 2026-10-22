@@ -179,3 +179,10 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** letting each engine module update the status itself; ignoring impossible events instead of throwing.
 **Why:** a skipped or repeated step means something upstream is broken (a double claim, a stale row). Throwing turns that into a loud failure inside the send transaction, which rolls back, instead of a quietly wrong status. Keeping it pure means all 118 rule cases are tested in milliseconds with no database.
 **Cost:** every caller has to catch or let the error stop the batch. The rules exist twice in the codebase, once in the code and once as a table in the tests, by design.
+
+## D26 · 2026-10-22 · Prettier with the repo's own style, pinned in the project
+
+**Decided:** `.prettierrc` with single quotes, 120-character lines, trailing commas and semicolons. Prettier 3.6.2 is a pinned dev dependency, with `npm run format` and `npm run format:check`. All existing files were formatted once in a single style-only commit.
+**Considered:** no formatter (the state until now); Prettier's defaults (double quotes, 80 characters).
+**Why:** Deepak's editor formatted `src/lifecycle.ts` on save with its own defaults, turning a reviewed file into a 133-line diff that blocked a merge. With the settings in the repo, the editor, the junior and Claude all produce the same layout. Single quotes and 120 characters match what was already written, so the one-off reformat was 47 lines.
+**Cost:** one more dev dependency. A file only stays stable if everyone formats with this config.
