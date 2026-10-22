@@ -1,6 +1,6 @@
 # Execution flow
 
-**Status: PLANNED, partly built.** T01 (DB pool) and T02 (config) exist; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
+**Status: PLANNED, partly built.** T01 (DB pool), T02 (config) and T03 (lifecycle) exist; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
 
 ## Entry points
 
@@ -59,7 +59,7 @@ tick
              checkContent(text)                  src/templates/render.ts (pure)
              provider.send({idempotencyKey,…})   src/mock/provider.ts   [BOUNDARY: own DB connection = "external"]
              INSERT sends ON CONFLICT DO NOTHING [DB: UNIQUE (contact_id, step)]
-             transition(status, sent:<step>)     src/lifecycle.ts       (pure)
+             transition(status, sent:<step>)     src/lifecycle.ts:87    (pure, BUILT T03; throws InvalidTransitionError)
              nextActionAt(step, sentAt, waits)   src/schedule.ts        (pure)
              UPDATE contacts; INSERT events      [DB]
            COMMIT
@@ -76,3 +76,4 @@ tick
 
 - **T01:** `src/db/pool.ts` (`getPool`, `closePool`), `vitest.config.ts`, Docker Postgres on `localhost:5433` (databases `mnemio` and `mnemio_test`).
 - **T02:** `src/labels.ts`, `src/config.ts` (`loadConfig`). Pure logic, no boundary crossed. Not yet called from anywhere except tests.
+- **T03:** `src/lifecycle.ts`: `transition` (:87) switches on the event; replies go to `applyReply` (:66); `expectedStep` (:47) reads the `EXPECTED_STEP` table (:27); a valid send copies its row from `AFTER_SENT` (:40). Imports only `./labels`. Planned callers: `src/engine/send.ts` (T13) after each send, `src/engine/replies.ts` (T14) after a reply is labelled, `src/engine/deactivate.ts` (T15). Not called from anywhere except tests yet.

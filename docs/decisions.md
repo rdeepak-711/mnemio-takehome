@@ -165,3 +165,17 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** letting the last value win.
 **Why:** a repeated label is almost certainly a typo for another label. Letting the last one win would hide it, and the sum check might not catch it.
 **Cost:** none worth noting. The task file didn't specify this case.
+
+## D24 · 2026-10-22 · A reply that needs review stops the sequence
+
+**Decided:** `needs_review` (the classifier isn't sure) moves an in-sequence or deactivated contact to `replied`, the same as `interested` and `not_interested`.
+**Considered:** leaving the contact in sequence until a human labels the reply.
+**Why:** the person wrote back. Sending them another cold follow-up before anyone has read their reply is the mistake a real sales team would be embarrassed by, and it can't be undone.
+**Cost:** if the reply was noise (an empty message, a bounce the rules missed), that contact gets no more emails. The `needs_review` count on the dashboard is how a human would find them.
+
+## D25 · 2026-10-22 · Lifecycle rules live in one pure function that throws on anything not in the table
+
+**Decided:** `transition(status, event)` in `src/lifecycle.ts` is the only place that decides a contact's next status. A send of the wrong step, a bounce on a finished contact, or a deactivation before follow-up 3 throws `InvalidTransitionError`. `expectedStep('follow_up_3_sent')` is `null`, since only deactivation is left (the task file didn't say).
+**Considered:** letting each engine module update the status itself; ignoring impossible events instead of throwing.
+**Why:** a skipped or repeated step means something upstream is broken (a double claim, a stale row). Throwing turns that into a loud failure inside the send transaction, which rolls back, instead of a quietly wrong status. Keeping it pure means all 118 rule cases are tested in milliseconds with no database.
+**Cost:** every caller has to catch or let the error stop the batch. The rules exist twice in the codebase, once in the code and once as a table in the tests, by design.
