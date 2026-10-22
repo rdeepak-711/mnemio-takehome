@@ -54,6 +54,14 @@ Every contact belongs to one of 20 groups, called segments. A segment is two fac
 
 The kind of job comes from the job title, using simple keyword rules in `src/segments.ts`, checked in a fixed order: founder words first, then tech, then sales, then operations and finance. The first rule that matches wins, which is why "Founder, ex-Sales Director" counts as a founder. Keywords must be whole words, so "Director" doesn't count as tech just because it contains the letters "cto". A title that matches nothing goes to operations and finance, and a test pins that so the choice can't change by accident. The seed only uses titles from a fixed list, and a test checks that every one of them lands in the group it was meant for.
 
+## Sorting the obvious replies without AI (built in T07)
+
+Most replies to cold email are easy to sort. Many are automatic out-of-office messages, and the email system usually marks those with a hidden header (`Auto-Submitted`), which is the most reliable sign there is, so it's checked first. Next come plain requests to stop: "unsubscribe", "remove me", "stop emailing me". These count unless the person directly says the opposite ("don't unsubscribe me"). Last, an out-of-office written by hand ("I'm on annual leave until 3 Nov"), unless the person denies it ("Out of office? No, I'm here").
+
+`src/classify/rules.ts` does this with simple text patterns and no AI. When it finds an out-of-office, it also tries to read the return date ("until 3 Nov", "back on 2026-11-10", "returning Monday", "until Monday 3rd November") so the next email can wait until they're back.
+
+The most important rule in this file is that it would rather say "I don't know" (`null`) than guess. A reply the rules can't place goes to the AI later, and an out-of-office with no readable date simply waits the default 7 days. A wrong guess is worse: unsubscribing someone who asked to stay, or emailing someone on the last day of their holiday.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
@@ -64,4 +72,5 @@ The kind of job comes from the job title, using simple keyword rules in `src/seg
 - **Terminal status:** a finished status (`replied`, `bounced`, `unsubscribed`, `deactivated`); no more emails are ever sent.
 - **Slot:** a blank in a template, written `{{name}}`, filled from the contact's record.
 - **Role family:** the kind of job a title belongs to: `founder`, `sales`, `ops_finance` or `tech`.
+- **Auto-reply header:** a hidden line (`Auto-Submitted`) that email systems add to automatic messages such as out-of-office replies.
 - **Fallback:** the simpler option used when the AI fails or the quota is used up.

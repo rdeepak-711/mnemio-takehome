@@ -1,6 +1,6 @@
 # Execution flow
 
-**Status: PLANNED, partly built.** T01 (DB pool), T02 (config), T03 (lifecycle), T04 (schedule), T05 (render) and T06 (segments) exist; Layer 1 (pure logic) is complete except T07; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
+**Status: PLANNED, partly built.** T01 (DB pool), T02 (config), T03 (lifecycle), T04 (schedule), T05 (render), T06 (segments) and T07 (rules) exist; Layer 1 (pure logic) is complete; everything else is still planned. This is the intended flow from `spec/site.md`. Each task updates the section it touches from "planned" to "built", with real line references.
 
 ## Entry points
 
@@ -41,7 +41,7 @@ tick
  ├─ getNow(db)                                   src/clock.ts           [DB]
  ├─ deliverReplies(db, now)                      src/engine/replies.ts  [DB]  mock_inbox → replies
  ├─ processReplies(db, now, classifier)          src/engine/replies.ts
- │    ├─ classifyByRules(reply)                  src/classify/rules.ts  (pure)
+ │    ├─ classifyByRules(reply, now)             src/classify/rules.ts:79 (pure, BUILT T07)
  │    ├─ classifyBatch(unclear[])                src/ai/classify.ts     [NETWORK: OpenRouter]
  │    │    ├─ cache.get / cache.set              src/ai/cache.ts        [DB]
  │    │    ├─ limiter.acquire                    src/ai/limiter.ts      [DB: llm_usage]
@@ -80,3 +80,4 @@ tick
 - **T04:** `src/schedule.ts`: `nextActionAt` (:17) picks the wait for the step from `WAIT_INDEX` (:6) and adds it with `addDays` (:13); `oooReschedule` (:22) picks `returnDate + 1 day` if that's after `now`, else `now + defaultDays`, then takes the later of that and the current due date. Imports only `type Step`. Never reads the real clock (a test checks the source). Planned callers: `src/engine/send.ts` (T13) after a send, `src/engine/replies.ts` (T14) for out-of-office. Not called from anywhere except tests yet.
 - **T05:** `src/templates/render.ts`: `render` (:22) fills `{{slot}}`s in one `replace` pass using `SLOT_PATTERN` (:12), throwing on an unknown slot or an empty value; `findSlots` (:31) lists slot names; `checkContent` (:36) returns every problem (leftover braces, empty or long subject, long body, spam words via `SPAM_PATTERNS` :19). Imports only `escapeRegExp` from `src/regex.ts`. Planned callers: `src/engine/send.ts` (T13) renders then checks each email before `provider.send`; `src/ai/sequences.ts` (T17) uses `findSlots` + `checkContent` to vet AI-written templates. Not called from anywhere except tests yet.
 - **T06:** `src/segments.ts`: `roleFamily` (:45) tries each rule in `RULES` (:32) in order via the regexes in `PATTERNS` (:40), defaulting to `ops_finance`; `segmentOf` (:50) builds `'<family>:<industry>'`; `allSegments` (:54) lists all 20; `ROLE_TITLES` (:8) is the pool the seed draws from. Imports only `escapeRegExp` from `src/regex.ts`. Planned callers: `src/seed/seed.ts` (T10) sets each contact's `role_family` and `segment`; `src/ai/sequences.ts` (T17) asks the AI for one sequence per segment. Not called from anywhere except tests yet.
+- **T07:** `src/classify/rules.ts`: `classifyByRules` (:79) normalises apostrophes (`normalise` :31), then checks `headerIsAuto` (:35), the unsubscribe and negation patterns, then the out-of-office phrase and denials; returns `null` for anything else. `findReturnDate` (:67) runs one combined `RETURN_DATE` regex (:16) and validates every date with `utcDate` (:41). No imports. Planned caller: `src/engine/replies.ts` (T14) `processReplies` tries the rules first and sends only the `null`s to `classifyBatch` (T17). Not called from anywhere except tests yet.
