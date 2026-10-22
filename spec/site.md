@@ -125,6 +125,9 @@ The seed writes the same events, with past timestamps, for the history it create
 4. In-sequence ⇔ `next_action` and `next_action_at` are not null. Terminal ⇔ both are null.
 5. Every reply's `received_at` is after its send's `sent_at`, and every reply belongs to an accepted send.
 6. Replaying a contact's `status_changed` events in order ends at its current status.
+7. Every send has a `mock_outbox` row with the same `idempotency_key` and outcome (added in T10, D38).
+
+All seven are checked by `checkInvariants` in `src/invariants.ts`. Invariant 3 is checked one way (unsubscribed ⇒ suppression row), because a suppression row alone doesn't say which way the contact got there.
 
 ## Lifecycle rules
 
@@ -187,7 +190,7 @@ Each task has its own file `tasks/T0x-*.md`, written by the harness engineer wit
 
 **T09 Simulated clock.** `src/clock.ts`: `getNow(db)`, `setNow(db, t)`, `advance(db, days)`. No code outside this file may call `new Date()` for business time (a test greps `src/engine` and `src/mock` for `new Date()` and `Date.now()`).
 
-**T10 Seed.** `src/seed/seed.ts` `seed(db, config)`. 10,000 contacts, Faker seeded with `SEED`, emails on `.example` domains, unique. Weighted status mix (percentages pinned in `tasks/T10-seed.md`). History consistent with status (sends dated by the waits, replies after a send, suppression rows for unsubscribed and bounced, `next_action_at` set for in-sequence contacts, some already due at `SIM_START`), plus the matching `events`. Tests: same seed → identical rows (hash); every invariant in "Invariants" across all rows; runs in under 30 seconds.
+**T10 Seed.** `src/seed/seed.ts` `seed(pool, config)`. 10,000 contacts, Faker seeded with `SEED`, emails on `.example` domains, unique. Weighted status mix (percentages pinned in `tasks/T10-seed.md`). History consistent with status (sends dated by the waits, replies after a send, suppression rows for unsubscribed and bounced, `next_action_at` set for in-sequence contacts, some already due at `SIM_START`), plus the matching `events`. Tests: same seed → identical rows (hash); every invariant in "Invariants" across all rows; runs in under 30 seconds.
 
 **T11 Mock provider.** `src/mock/provider.ts` `send({ idempotencyKey, to, subject, body })` → `{ outcome }`. Every random choice for a send (bounce at `BOUNCE_RATE`, whether a reply comes, its label, delay and text) comes from `hash(SEED, idempotencyKey)`, not from a shared sequential RNG, so the result doesn't depend on which worker sends first. Records every key in `mock_outbox` on its own connection; a repeated key returns the first outcome and creates nothing new. On accept, may schedule a reply in `mock_inbox` (chance `REPLY_RATE`, label from `REPLY_MIX`, delay 0.5–3 days, OOO replies carry the header and a return date) from a bank of reply texts including deliberately ambiguous ones. Tests: rates within tolerance over 10,000 sends; same key twice → one outbox row; same seed + same keys sent in a shuffled order → identical outcomes.
 

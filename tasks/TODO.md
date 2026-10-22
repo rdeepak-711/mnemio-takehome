@@ -20,7 +20,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 ## Layer 2 — Database (task files written when Layer 1 is green)
 - ✅ T08 Schema + migrations → `tasks/T08-schema.md`
 - ✅ T09 Simulated clock → `tasks/T09-clock.md`
-- 🧪 T10 Seed 10k with consistent history
+- 🗣 T10 Seed 10k with consistent history
 - ☐ T11 Mock provider (bounces, replies with true label, idempotency)
 
 ## Layer 3 — Engine
