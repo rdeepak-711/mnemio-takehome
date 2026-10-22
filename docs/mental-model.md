@@ -74,6 +74,12 @@ Two deliberate quirks. Every time in these tables is simulated time written by t
 
 The simulation's "today" is one row in the database, and `src/clock.ts` is the only code that reads or moves it. Everything else asks this file what day it is; nothing looks at the computer's own clock, and a test scans every file to make sure (the AI folder is the one exception, because the free AI's daily limit counts real days). Moving the row forward one day and running a tick is how a month of campaign plays out in a minute. The move is a single database statement, so even if two things advance the clock at the same moment, no day is lost.
 
+## The starting crowd, and the inspector (built in T10)
+
+`npm run seed` fills the empty database with 10,000 made-up people and a believable past: 60% haven't been emailed yet, about a quarter are part-way through their four emails, and the rest have already finished one way or another (replied, bounced, unsubscribed, or got all four emails and never answered). The past isn't typed in directly. Each person starts as "new" and is walked step by step through the same rulebook the real engine uses, so the made-up history follows exactly the rules the engine will follow later. A fixed seed number drives every random choice, so running it again on a fresh database gives the same people, the same dates and the same record numbers, which lets a test compare two runs. The whole thing happens in one go: if anything fails half-way, nothing is kept.
+
+`checkInvariants` is the inspector. It asks the database seven questions, such as "does anyone marked as bounced lack a bounce?" and "does anyone's history end at a different status from the one they have now?", and lists every record that fails. The seed runs it at the end. Its own tests feed it data broken on purpose, one way at a time, to prove it catches each kind of break; an inspector only ever shown good data could be blind and nobody would know.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
@@ -88,3 +94,6 @@ The simulation's "today" is one row in the database, and `src/clock.ts` is the o
 - **Migration:** a numbered `.sql` file that builds or changes tables; each is applied once and recorded.
 - **Constraint (CHECK, UNIQUE):** a rule the database enforces on every row it stores.
 - **Fallback:** the simpler option used when the AI fails or the quota is used up.
+- **Seed (number):** the starting number for the random choices; the same number always produces the same choices.
+- **Invariant:** a rule that must be true of the data at all times, e.g. "a bounced contact has a bounced email".
+- **Transaction:** a group of database changes that are kept all together or not at all.

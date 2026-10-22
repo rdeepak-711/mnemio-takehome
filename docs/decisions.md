@@ -256,3 +256,31 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** read the time, add a day in TypeScript, write it back; the spec's narrower check of only `src/engine` and `src/mock`.
 **Why:** read-then-write loses updates when two callers advance at once (both read Monday, both write Tuesday); one statement can't. A test proves ten simultaneous `advance(1)` calls move exactly ten days. Scanning all of `src/` catches a real-clock call wherever it's added, including the seed and the report, which the narrower check would have missed.
 **Cost:** the scan is a text match, so a real-clock call written in an unusual way (for example through an alias) would get past it. `src/ai/` is trusted by folder, not checked.
+
+## D37 · 2026-10-22 · The seed builds history through `transition()`, with a pinned status mix
+
+**Decided:** the seed walks every contact from `new` through `transition()` (the engine's own rulebook) to a target status, writing the sends, replies, suppression rows and events each step implies. The mix is pinned: 60% new; 12 / 8 / 5 / 3% at the four in-sequence statuses; 5% replied, 2% bounced, 2% unsubscribed, 3% deactivated, split exactly by largest remainder. New contacts start in daily waves of 1,000 from `SIM_START`. About a third of in-sequence contacts are already due at `SIM_START`. All randomness comes from one Faker instance seeded with `SEED`; `@faker-js/faker` is pinned at 10.6.0 exactly.
+**Considered:** writing statuses straight into `contacts` and generating matching rows separately; all 10,000 contacts starting at `new`; an unpinned Faker version.
+**Why:** if the seed writes statuses itself, the seed and the engine can disagree about what a status means, and T20's consistency checks would fail on seed data rather than engine bugs. Starting with history means the dashboard and the engine have mid-sequence, terminal and due contacts on day one. Waves of 1,000 keep the first ticks to a realistic size. Faker's output for a seed changes between versions, so an unpinned version would break "same seed, same rows".
+**Cost:** walking each contact through `transition()` is slower than writing statuses, so the inserts are batched to stay under 30 seconds. Upgrading Faker changes the seeded data.
+
+## D38 · 2026-10-22 · `checkInvariants` is one shared checker, tested by breaking data on purpose
+
+**Decided:** `src/invariants.ts` exports `checkInvariants(db, limit = 50)`: read-only SQL, one query per invariant (spec invariants 1–6 plus a 7th, every send has a matching `mock_outbox` row with the same outcome), returning numbered violations. `npm run seed` runs it after seeding; T18 and T20 reuse it. Its tests build a small clean dataset and then break it one way at a time, asserting the exact invariant number reported.
+**Considered:** each later task writing its own consistency queries; testing the checker only on seed output.
+**Why:** a checker that only ever sees good data could return `[]` for everything and still pass. Breaking the data on purpose proves each check actually fires, and asserting the exact number proves it doesn't fire for the wrong reason.
+**Cost:** the checker scans whole tables, so it is a verification tool, not something to run inside every tick.
+
+## D39 · 2026-10-22 · Seeded replies don't count toward classifier accuracy
+
+**Decided:** T19's accuracy figure counts only replies with `received_at ≥ SIM_START`. Seeded replies get `label = true_label`.
+**Considered:** counting all replies.
+**Why:** seeded labels are copied from the truth, so including them would inflate accuracy with numbers the classifier never produced.
+**Cost:** the accuracy figure has nothing to report until the simulation produces replies.
+
+## D40 · 2026-10-22 · Seed details decided during the build
+
+**Decided:** (1) Each contact gets one 09:00–09:59 UTC send minute, and all its sends use it, so the gap between two sends is exactly the wait. (2) The in-sequence "due" window is measured from `SIM_START` itself, not from 09:00 on its date. (3) A seeded reply always arrives before the next step would have been due (delay < that step's wait). (4) Email name parts are letters and digits only; the company domain keeps single hyphens (`smith-jones.example`). (5) Invariant 2 is checked both ways: `bounced` without its signs, and any other status that has a bounced last send or a bounced suppression row. (6) Ids for contacts, sends and replies are reserved from their sequences first, so rows can be linked in memory and inserted in batches.
+**Considered:** a new random minute per send; a window anchored at 09:00 on the start date (the first build did this); any reply delay from 0.5–3 days regardless of the wait; stripping hyphens from domains too; inserting row by row and reading back each id.
+**Why:** (1) a per-send minute would make some follow-ups go out up to 59 minutes before their wait allows. (2) and (3) came from probing settings the tests didn't cover: with `SIM_START` at 23:30 the 09:00 anchor put 117 contacts outside the window, and with 1-day waits replies landed after the next email was already due, which the engine could never produce. Both now have tests. (4) hyphens keep company names readable and are valid in domains. (5) a bounce with the wrong status is just as broken as a bounced status without a bounce. (6) row-by-row inserts would be 30,000+ round trips; batches finish 10,000 contacts in about one second.
+**Cost:** ids only match between runs after `npm run db:reset`, which restarts the sequences. Changing how many random draws a contact uses (as the window fix did) changes the seeded data for the same `SEED`.
