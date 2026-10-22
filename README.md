@@ -114,6 +114,7 @@ The free models allow roughly 45 calls a day. The design: the AI writes one 4-em
 
 - Deactivation (T15), the AI (T16–T17), the tick/advance commands, report, dashboard and the timed full run are not built yet.
 - Without an AI key, every reply the rules can't label becomes `needs_review` and stops that contact's emails (about 70% of replies in the 20-day probe).
+- A `needs_review` reply ends the sequence; there is no screen or command for a person to read it and restart the contact.
 - Late replies are only simulated for follow-up 3; replies to earlier emails always arrive within 12–72 hours.
 - Contacts with missing names or companies get a less personal email ("Hi there") rather than being flagged for review.
 
