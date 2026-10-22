@@ -27,7 +27,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - ✅ T12 Claim with SKIP LOCKED
 - ✅ T13 Send step (transaction, parallel workers, crash test)
 - ✅ T14 Reply delivery + processing
-- 🧪 T15 Deactivation
+- 🗣 T15 Deactivation
 
 ## Layer 4 — AI
 - ☐ T16 OpenRouter client (limiter, retries, cache, fallback, model pick)
