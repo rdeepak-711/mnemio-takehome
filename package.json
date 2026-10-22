@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src tests vitest.config.ts",
-    "format:check": "prettier --check src tests vitest.config.ts"
+    "format:check": "prettier --check src tests vitest.config.ts",
+    "db:reset": "tsx src/db/reset.ts"
   },
   "dependencies": {
     "dotenv": "^18.0.8",
