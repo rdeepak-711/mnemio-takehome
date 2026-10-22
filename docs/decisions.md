@@ -249,3 +249,10 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** dropping such rows; inserting the reply with no `send_id`.
 **Why:** the gap only exists after a crash between the provider call and our commit (D31). The contact is still due, so the next tick claims it again; the provider returns the same outcome for the same key and creates nothing new; our `sends` row is inserted; and on the following tick the waiting reply finds it. Dropping the reply would lose a real answer. Inserting it without a send would break `replies.send_id NOT NULL` and invariant 5.
 **Cost:** a reply can arrive one tick late after a crash. If the contact goes terminal before the retry (for example it unsubscribes by another route), the reply waits forever; the orphaned count makes that visible instead of silent.
+
+## D36 · 2026-10-22 · The clock moves in one atomic UPDATE, and the no-real-clock rule covers all of `src/`
+
+**Decided:** `src/clock.ts` `advance(db, days)` is a single `UPDATE sim_clock SET now = now + make_interval(days => $1) WHERE id = 1 RETURNING now`; `days` must be an integer ≥ 1. `setNow` is an upsert on `id = 1`. A unit test scans every `.ts` file under `src/` and fails on `new Date()` with no arguments or `Date.now(`, except under `src/ai/`, where the daily quota counts real days.
+**Considered:** read the time, add a day in TypeScript, write it back; the spec's narrower check of only `src/engine` and `src/mock`.
+**Why:** read-then-write loses updates when two callers advance at once (both read Monday, both write Tuesday); one statement can't. A test proves ten simultaneous `advance(1)` calls move exactly ten days. Scanning all of `src/` catches a real-clock call wherever it's added, including the seed and the report, which the narrower check would have missed.
+**Cost:** the scan is a text match, so a real-clock call written in an unusual way (for example through an alias) would get past it. `src/ai/` is trusted by folder, not checked.
