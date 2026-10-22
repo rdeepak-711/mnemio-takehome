@@ -235,3 +235,17 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** `created_at DEFAULT now()` as a convenience.
 **Why:** a real-time default would quietly mix wall-clock time into simulated data, break the "same seed → identical rows" hash in T10, and make the day slider show contacts created "in the future" relative to the simulation.
 **Cost:** every insert must pass its timestamps explicitly; forgetting one is a not-null error rather than a silent default.
+
+## D34 · 2026-10-22 · Suppressed contacts change status through `transition`, via a new `suppressed` event
+
+**Decided:** `src/lifecycle.ts` gains a fifth event, `{ type: 'suppressed'; reason: 'bounced' | 'unsubscribed' }`: from an in-sequence status it gives `bounced` or `unsubscribed` with no next action; from a terminal status it throws. The send step (T13) uses it when a claimed contact's address is on the suppression list, instead of setting the status directly as the spec first said. Added to T13's scope, with tests in `tests/unit/lifecycle.test.ts`.
+**Considered:** the spec as written (the send step sets the status itself); reusing the `reply: unsubscribe` and `bounced` events.
+**Why:** T03's whole point is that `transition` is the only place that decides a status (D25). One exception in the send step would be the one path the 118 lifecycle tests don't cover. Reusing `reply: unsubscribe` would be a lie in the event log (there was no reply), and `bounced` normally means this send bounced, which it didn't.
+**Cost:** T03 code changes inside T13, and `transition` gets one more case. The `never` checks in `transition` make the build fail until every switch handles it.
+
+## D35 · 2026-10-22 · A mock reply whose send was rolled back waits until the retried send commits
+
+**Decided:** `deliverReplies` (T14) joins `mock_inbox.idempotency_key` to `sends.idempotency_key`. A due mock reply with no matching send is left undelivered, not dropped and not inserted. The report (T19) counts those still waiting as "orphaned".
+**Considered:** dropping such rows; inserting the reply with no `send_id`.
+**Why:** the gap only exists after a crash between the provider call and our commit (D31). The contact is still due, so the next tick claims it again; the provider returns the same outcome for the same key and creates nothing new; our `sends` row is inserted; and on the following tick the waiting reply finds it. Dropping the reply would lose a real answer. Inserting it without a send would break `replies.send_id NOT NULL` and invariant 5.
+**Cost:** a reply can arrive one tick late after a crash. If the contact goes terminal before the retry (for example it unsubscribes by another route), the reply waits forever; the orphaned count makes that visible instead of silent.
