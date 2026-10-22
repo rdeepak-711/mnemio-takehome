@@ -100,7 +100,7 @@ events        id bigserial · contact_id · type (one of the event types below) 
 sim_clock     id int PK CHECK (id = 1) · now timestamptz
 
 mock_outbox   idempotency_key PK · outcome · received_at    ← the mock provider's own memory (written on its own connection)
-mock_inbox    id · contact_id · send_id · body · headers jsonb · true_label · deliver_at · delivered bool
+mock_inbox    id · idempotency_key · body · headers jsonb · true_label · deliver_at · delivered bool   ← no FKs; the send is found via sends.idempotency_key (D31)
 
 llm_cache     key PK · kind ('sequence'|'classification') · response jsonb · model · created_at
 llm_usage     day date PK (real day) · calls int
@@ -148,12 +148,12 @@ Before every send: the address must not be in `suppression`, the contact must st
 
 ## One tick (`run`), in this order
 
-1. Deliver due mock replies (`mock_inbox.deliver_at <= now`) into `replies`.
+1. Deliver due mock replies (`mock_inbox.deliver_at <= now`) into `replies`, joining `mock_inbox.idempotency_key` to `sends.idempotency_key` for `send_id` and `contact_id`. A due row with no matching `sends` row (its send was rolled back by a crash) stays undelivered and is picked up on a later tick, once the retried send has committed (D35).
 2. Classify unlabelled replies: rules → cache → AI in batches of 25 → fallback `needs_review`. Apply each label's action (table above).
 3. Deactivate contacts whose `next_action = 'deactivate'` is due.
 4. Send, in batches. One transaction per batch:
    - Claim: `SELECT … FROM contacts WHERE status IN (in-sequence) AND next_action IN ('first','follow_up_1','follow_up_2','follow_up_3') AND next_action_at <= now ORDER BY next_action_at, id FOR UPDATE SKIP LOCKED LIMIT SEND_BATCH_SIZE`.
-   - Per claimed contact: if the address is in `suppression`, set the status from the suppression reason (`bounced` or `unsubscribed`), null `next_action`, append `status_changed` with reason `suppressed`, and don't send. Otherwise render the email; if `checkContent` finds problems with an AI template, use the fallback template; if the fallback fails too, throw (it's a bug in a hand-written template, so the run stops loudly). Then call the mock provider with the idempotency key → insert `sends` (`ON CONFLICT DO NOTHING`) → update the contact through `transition` → append events.
+   - Per claimed contact: if the address is in `suppression`, apply `transition(status, { type: 'suppressed', reason })` (status becomes `bounced` or `unsubscribed`, no next action), append `status_changed` with reason `suppressed`, and don't send (D34). Otherwise render the email; if `checkContent` finds problems with an AI template, use the fallback template; if the fallback fails too, throw (it's a bug in a hand-written template, so the run stops loudly). Then call the mock provider with the idempotency key → insert `sends` (`ON CONFLICT DO NOTHING`) → update the contact through `transition` → append events.
    - Commit. Any other error rolls back the whole batch and is rethrown.
    - Repeat until a batch claims 0 contacts.
 
@@ -195,9 +195,9 @@ Each task has its own file `tasks/T0x-*.md`, written by the harness engineer wit
 
 **T12 Claim.** `src/engine/claim.ts` `claimDue(client, now, limit)` using `FOR UPDATE SKIP LOCKED`. Uses the claim query from "One tick" step 4. Tests: two concurrent transactions get disjoint sets; terminal contacts never returned; `next_action = 'deactivate'` never returned; not-yet-due never returned; a suppressed in-sequence contact *is* returned (the send step handles it).
 
-**T13 Send step.** `src/engine/send.ts` `sendDue(db, now, deps)`: the per-contact transaction from "One tick" step 4. Tests: running it twice at the same time sends nothing new the second time; 4 parallel workers over 2,000 due contacts → exactly 2,000 sends, zero duplicates; a crash after the provider call and before commit, then a re-run → one `mock_outbox` row and one `sends` row; a suppressed address is skipped; bounce → `bounced` + suppression.
+**T13 Send step.** `src/engine/send.ts` `sendDue(db, now, deps)`: the per-contact transaction from "One tick" step 4. Tests: running it twice at the same time sends nothing new the second time; 4 parallel workers over 2,000 due contacts → exactly 2,000 sends, zero duplicates; a crash after the provider call and before commit, then a re-run → one `mock_outbox` row and one `sends` row; a suppressed address is skipped and its status changes through `transition`'s `suppressed` event; bounce → `bounced` + suppression. T13 also adds the `suppressed` event to `src/lifecycle.ts` (D34), with its own tests in `tests/unit/lifecycle.test.ts`.
 
-**T14 Reply processing.** `src/engine/replies.ts` `deliverReplies(db, now)` and `processReplies(db, now, classifier)`. Tests: each label's action from the lifecycle table; OOO moves the next send, doesn't stop it; a reply delivered at the same tick as a due follow-up stops the follow-up.
+**T14 Reply processing.** `src/engine/replies.ts` `deliverReplies(db, now)` and `processReplies(db, now, classifier)`. Tests: each label's action from the lifecycle table; OOO moves the next send, doesn't stop it; a reply delivered at the same tick as a due follow-up stops the follow-up; a due `mock_inbox` row whose `idempotency_key` has no `sends` row is not delivered and stays `delivered = false`, and is delivered on the tick after that send commits (D35). T19's report counts mock replies still undelivered after their `deliver_at` with no matching send ("orphaned"); after a clean run it's 0.
 
 **T15 Deactivation.** `src/engine/deactivate.ts`. Tests: due → `deactivated` with an event; not due → unchanged; OOO-pushed deactivation respected.
 

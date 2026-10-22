@@ -62,6 +62,14 @@ Most replies to cold email are easy to sort. Many are automatic out-of-office me
 
 The most important rule in this file is that it would rather say "I don't know" (`null`) than guess. A reply the rules can't place goes to the AI later, and an out-of-office with no readable date simply waits the default 7 days. A wrong guess is worse: unsubscribing someone who asked to stay, or emailing someone on the last day of their holiday.
 
+## The filing cabinet, and why it refuses bad paperwork (built in T08)
+
+All the data lives in a Postgres database, in 11 tables: the contacts, every email sent, every reply, the do-not-email list, an append-only diary of everything that happened, the one-row simulated clock, the fake mail service's own records, and the AI's cache and daily counter. `npm run db:reset` wipes it and builds every table again from `src/db/migrations/001_init.sql`.
+
+The tables don't just store data, they refuse impossible data. The database won't accept a second email of the same step to the same person, a status that doesn't exist, or a person marked "follow-up 1 sent" who isn't waiting for follow-up 2. The code already tries to prevent all of these, but if a bug ever slipped through, the database stops the bad row at the moment it's written and the whole batch undoes itself. A separate test checks that the database's lists of allowed values match the code's lists exactly, so the two can't quietly disagree.
+
+Two deliberate quirks. Every time in these tables is simulated time written by the code; none is filled in from the real clock, because that would mix real dates into the simulation. And the fake mail service's tables don't point at ours at all: it stands in for an outside company, which wouldn't know our record numbers and whose work stays done even if ours is undone.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
@@ -73,4 +81,6 @@ The most important rule in this file is that it would rather say "I don't know" 
 - **Slot:** a blank in a template, written `{{name}}`, filled from the contact's record.
 - **Role family:** the kind of job a title belongs to: `founder`, `sales`, `ops_finance` or `tech`.
 - **Auto-reply header:** a hidden line (`Auto-Submitted`) that email systems add to automatic messages such as out-of-office replies.
+- **Migration:** a numbered `.sql` file that builds or changes tables; each is applied once and recorded.
+- **Constraint (CHECK, UNIQUE):** a rule the database enforces on every row it stores.
 - **Fallback:** the simpler option used when the AI fails or the quota is used up.
