@@ -14,7 +14,7 @@ Needs Node 22+ and Docker.
 docker compose up -d db          # Postgres 17 on localhost:5433, databases mnemio and mnemio_test
 npm install
 cp .env.example .env             # the defaults work; the AI key is only needed from T16 on
-npm run db:reset                 # build the tables
+npm run db:reset                 # build the tables (keeps saved AI answers)
 npm run seed                     # 10,000 contacts with history; prints "invariants: ok"
 npm test                         # 603 automated tests
 ```
@@ -48,7 +48,7 @@ TypeScript on Node, Postgres as both the database and the work queue, plain SQL 
 | `events` | An append-only diary of everything that happened to each contact |
 | `sim_clock` | The simulation's "now", one row |
 | `mock_outbox`, `mock_inbox` | The mock provider's own records: emails received, replies waiting |
-| `llm_cache`, `llm_usage` | AI answers kept for reuse, and AI calls used per real day |
+| `ai.llm_cache`, `ai.llm_usage` | AI answers kept for reuse, and AI calls used per real day. They live in their own `ai` schema, which `npm run db:reset` keeps (D52) |
 
 The database also refuses impossible records, as a second line of defence behind the code: one row per contact per step (`UNIQUE (contact_id, step)`), a status must match its next action, a segment must equal `role_family:industry`.
 

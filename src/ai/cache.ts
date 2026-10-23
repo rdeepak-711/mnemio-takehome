@@ -16,7 +16,7 @@ export function cacheKey(kind: CacheKind, promptVersion: string, input: string):
 
 export async function cacheGet(db: Queryable, key: string): Promise<{ response: unknown; model: string } | null> {
   const { rows } = await db.query<{ response: unknown; model: string }>(
-    'SELECT response, model FROM llm_cache WHERE key = $1',
+    'SELECT response, model FROM ai.llm_cache WHERE key = $1',
     [key],
   );
   return rows[0] ?? null;
@@ -32,7 +32,7 @@ export async function cacheSet(
   model: string,
 ): Promise<void> {
   await db.query(
-    'INSERT INTO llm_cache (key, kind, response, model) VALUES ($1, $2, $3, $4) ON CONFLICT (key) DO NOTHING',
+    'INSERT INTO ai.llm_cache (key, kind, response, model) VALUES ($1, $2, $3, $4) ON CONFLICT (key) DO NOTHING',
     [key, kind, JSON.stringify(response), model],
   );
 }

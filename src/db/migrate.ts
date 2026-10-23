@@ -40,7 +40,15 @@ export async function migrate(pool: pg.Pool, dir: string = MIGRATIONS_DIR): Prom
 }
 
 // Drops everything in the public schema and re-applies every migration.
-export async function resetDb(pool: pg.Pool, dir: string = MIGRATIONS_DIR): Promise<void> {
+// The ai schema (saved AI answers and the day's call count) is dropped too, unless keepAi (D52).
+// With keepAi, migrate runs first, so 002 moves rows from an old-layout public schema into ai before the drop.
+export async function resetDb(
+  pool: pg.Pool,
+  dir: string = MIGRATIONS_DIR,
+  opts: { keepAi?: boolean } = {},
+): Promise<void> {
+  if (opts.keepAi) await migrate(pool, dir);
   await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
+  if (!opts.keepAi) await pool.query('DROP SCHEMA IF EXISTS ai CASCADE');
   await migrate(pool, dir);
 }
