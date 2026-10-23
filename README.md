@@ -110,15 +110,17 @@ Every history is produced by walking the contact through the same `transition()`
 
 `deactivateDue` (`src/engine/deactivate.ts`) closes contacts who stayed silent through the last wait, 500 at a time, after replies are handled and before sending, so a same-day reply or an out-of-office always wins. A deactivated contact who replies later becomes `replied`. In a 30-day run on the 10,000-contact seed with no AI key (replies, deactivation and 4 send workers each day), each day took 0.3–2.0 seconds, the consistency checks were clean every day, 7,031 contacts were deactivated, and 22 of them answered late (21 replied, 1 unsubscribed).
 
-## AI (client built in T16; prompts in T17)
+## AI
 
 The free models allow roughly 45 calls a day. The design: the AI writes one 4-email sequence per segment (20 segments = 4 role families × 5 industries), and code fills in each contact's details; replies are first sorted by plain rules (auto-reply header, "unsubscribe", "out of office"), and only unclear ones go to the AI, 25 per call. Answers are cached; on failure or an exhausted budget, a hand-written template or a `needs_review` label takes over so the system never stops.
 
 The client (`src/ai/client.ts`) uses three free models in order (`OPENROUTER_MODELS` in `.env.example`; how they were picked is in `docs/findings.md`). It spaces calls (`AI_RPM`), counts the day's calls against `DAILY_AI_BUDGET` in the database, retries busy or failing models twice, skips a dead model for 5 minutes, and refuses any model whose name doesn't end in `:free`. A first live call answered in 3.4 seconds; the same question again came from the cache in 3 ms without using the budget.
 
+First live results with the test key (`docs/findings.md`): Flint wrote a valid four-email sequence for one segment in 28 seconds, after the first live run showed it writing each email as one run-on line, which the template check now rejects. On the 12 deliberately harder replies in the mock's bank that the rules leave alone, the AI matched the true label 11 times in one 7.5-second call; the miss ("Who gave you my address?") went to `needs_review`, which stops emails just as `not_interested` would.
+
 ## Known limitations so far
 
-- The AI prompts (T17), the tick/advance commands, report, dashboard and the timed full run are not built yet.
+- The tick/advance commands, report, dashboard and the timed full run are not built yet.
 - Without an AI key, every reply the rules can't label becomes `needs_review` and stops that contact's emails (about 70% of replies in the 20-day probe).
 - A `needs_review` reply ends the sequence; there is no screen or command for a person to read it and restart the contact.
 - Late replies are only simulated for follow-up 3; replies to earlier emails always arrive within 12–72 hours.

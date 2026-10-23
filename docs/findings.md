@@ -48,3 +48,10 @@ The account counter still read 1 used after Flint's success, so the count may la
 - From the descriptions: Flint is built for coding agents and was released 21 Oct 2026, so its email writing (T17) is untested. Liquid's models retain prompts for training. Mercury Decide, Mammoth 1 and Elephant 1 are decision models (calibrated probabilities, a good fit for classification in principle) on a separate alpha endpoint; not used. Dots3-Note Preview goes away 31 Dec 2026.
 
 **Set in `.env` (third check):** `OPENROUTER_MODELS=recursive/flint-v1.0:free,nvidia/nemotron-3.5-lightning:free,nvidia/nemotron-3.5-super-vl:free`.
+
+## First live runs of the prompts — 2026-10-23 (T17)
+
+- **Sequence, `tech:saas`, prompt v1:** Flint answered in 20 s with a sequence that passed every check, but each body was one run-on line ending "… today? Sam" (no paragraphs, sign-off inline). The checks didn't cover layout. Fixed: the schema now needs a blank line between paragraphs and `Sam` alone on the last line, and the prompt asks for it (prompt v2).
+- **Sequence, prompt v2:** Flint, 28 s, valid, laid out properly ("Hi {{first_name}}," / paragraphs / "Thanks," / "Sam"). Plain but usable wording.
+- **Classifier:** the 12 reply-bank texts that the rules return `null` for, in one call, 7.5 s: 11 matched the mock's true label. Miss: "Who gave you my address?" (true `not_interested`, AI `needs_review`), the bank's deliberately ambiguous text.
+- Account usage after these runs: 3 of 50 free requests.
