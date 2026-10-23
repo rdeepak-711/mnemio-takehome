@@ -16,7 +16,8 @@
     "tick": "tsx src/main.ts run",
     "advance": "tsx src/main.ts advance",
     "ai:warm": "tsx src/main.ts ai:warm",
-    "report": "tsx src/main.ts report"
+    "report": "tsx src/main.ts report",
+    "full-run": "tsx src/main.ts full-run"
   },
   "dependencies": {
     "@faker-js/faker": "10.6.0",
