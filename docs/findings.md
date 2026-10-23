@@ -62,4 +62,5 @@ Probe database, 10,000-contact seed, no OpenRouter key (cache only: 1 sequence a
 - `advance --days 30`: 62.8 s wall clock, `invariants: ok`. A second `advance --days 30` found nothing left to do (every day 0), `invariants: ok`.
 - After 60 days every contact had left the sequence: 7,160 deactivated, 1,883 replied, 503 unsubscribed, 454 bounced.
 - With no key, saved answers were still used: 1,339 sends came from the one cached sequence (`template_source = 'cache'`), and 1,454 replies were labelled from the 13 cached reply labels. The reply bank is a fixed set of texts, so a handful of saved labels covers most replies. The rest: 640 by rule, 12 fallback.
-- Day lines in the first 30 days show deactivation peaks around 700 a day near day 25, as the seeded `follow_up_3_sent` group and the first wave of new contacts reach the end of their waits.
+- Only days 24–30 of the first run were kept in the output: days 24–27 deactivated 706–726 contacts a day, days 28–30 between 21 and 35. Why the peak falls there was not checked; T19's report will show it per day.
+
