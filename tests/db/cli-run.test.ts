@@ -20,7 +20,11 @@ type Run = { code: number; stdout: string; stderr: string };
 
 // Runs src/main.ts as `npm run …` would, against the test database and with no OpenRouter key.
 async function cli(...args: string[]): Promise<Run> {
-  const env = { ...process.env, DATABASE_URL: url, OPENROUTER_API_KEY: '' };
+  return cliWith({}, ...args);
+}
+
+async function cliWith(extra: Record<string, string>, ...args: string[]): Promise<Run> {
+  const env = { ...process.env, DATABASE_URL: url, OPENROUTER_API_KEY: '', ...extra };
   try {
     const { stdout, stderr } = await promisify(execFile)(tsx, ['src/main.ts', ...args], { cwd: root, env });
     return { code: 0, stdout, stderr };
@@ -48,6 +52,7 @@ describe('the command line', () => {
     expect(pkg.scripts.advance).toBe('tsx src/main.ts advance');
     expect(pkg.scripts['ai:warm']).toBe('tsx src/main.ts ai:warm');
     expect(pkg.scripts.report).toBe('tsx src/main.ts report');
+    expect(pkg.scripts['full-run']).toBe('tsx src/main.ts full-run');
   });
 
   it('advance --days 2 prints two day lines, checks the invariants and moves the clock 2 days', async () => {
@@ -100,4 +105,16 @@ describe('the command line', () => {
     expect(run.stdout).toContain('Contacts: 200 ·');
     expect((await getNow(pool)).getTime()).toBe(cfg.simStart.getTime());
   }, 30_000);
+
+  it('full-run on 100 contacts resets, seeds, runs to the end and prints the timings and the report', async () => {
+    const run = await cliWith({ CONTACT_COUNT: '100' }, 'full-run');
+    expect(run.stderr).toBe('');
+    expect(run.code).toBe(0);
+    expect(run.stdout).toMatch(/^timings: reset \d+\.\d s · /m);
+    expect(run.stdout).toMatch(/^days: \d+ \(finished: nobody left in sequence\)$/m);
+    expect(run.stdout).toContain('invariants: ok');
+    expect(run.stdout).toContain('Contacts: 100 ·');
+    expect(run.stdout).toContain('orphaned mock replies: 0');
+    expect(dayLines(run.stdout).length).toBeGreaterThan(0);
+  }, 60_000);
 });

@@ -5,12 +5,14 @@ import type { TickSummary } from '../../src/engine/tick';
 describe('parseArgs', () => {
   it('the usage names every command', () => {
     expect(() => parseArgs([])).toThrow(/report/);
+    expect(() => parseArgs([])).toThrow(/full-run/);
   });
 
   it('reads the three commands', () => {
     expect(parseArgs(['run'])).toEqual({ command: 'run' });
     expect(parseArgs(['ai:warm'])).toEqual({ command: 'ai:warm' });
     expect(parseArgs(['report'])).toEqual({ command: 'report' });
+    expect(parseArgs(['full-run'])).toEqual({ command: 'full-run' });
     expect(parseArgs(['advance', '--days', '30'])).toEqual({ command: 'advance', days: 30 });
     expect(parseArgs(['advance', '--days', '1'])).toEqual({ command: 'advance', days: 1 });
     expect(parseArgs(['advance', '--days', '365'])).toEqual({ command: 'advance', days: 365 });
@@ -21,6 +23,7 @@ describe('parseArgs', () => {
     [['walk']],
     [['run', 'extra']],
     [['report', 'extra']],
+    [['full-run', '--days', '3']],
     [['ai:warm', '--days', '2']],
     [['advance']],
     [['advance', '--days']],

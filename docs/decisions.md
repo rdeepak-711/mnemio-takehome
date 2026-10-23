@@ -382,3 +382,10 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** counting the seed's history in accuracy (the seed writes `label = true_label` for its replies, so accuracy would read near 100% whatever the classifier did); a real-clock "today" (meaningless in a simulation that moves 30 days in a minute); counting `deactivate` as due (it isn't an email).
 **Why:** the brief asks how the engine behaves, so the numbers that judge the engine (where its emails came from, how well it labelled) must leave out what the seed made up. The AI budget is the one real-world limit, so it's the one real-day number.
 **Cost:** two definitions of "today" on one page; the report says "(simulated)" in its first line to make that visible.
+
+## D55 · 2026-10-23 · The full run is a `main.ts` command that stops when nobody is left in sequence
+
+**Decided:** `src/full-run.ts` `fullRun(deps, { maxDays = 60, onDay })` times six phases (reset with `keepAi`, seed, warm the 20 sequences when there is an AI client, advance a day at a time while anyone is in sequence, check invariants, report) with `performance.now`, and `npm run full-run` (`tsx src/main.ts full-run`) prints each day, the timings, the invariants and the report. It exits 1 on any violation or any orphaned mock reply.
+**Considered:** `scripts/full-run.ts` as the spec names it (a second copy of the pools, AI client and printing set up in `main.ts`; `scripts/` isn't in `tsconfig.json` either); a fixed 30 days (stops before the last follow-ups and deactivations, or wastes empty days); timing with the sim clock (it measures pretend days, not how long the machine took).
+**Why:** the brief asks how long a 10,000-contact run takes and what it ends with; stopping when the sequence is empty measures exactly that. Keeping the AI cache through the reset means a second full run costs no AI calls, so timings are repeatable.
+**Cost:** a run with a cold cache and a key includes the AI's minutes in "warm"; the README states which kind of run its numbers come from. `performance.now` is the one real clock outside `src/ai/`, used only for timing, never for business time.
