@@ -85,10 +85,17 @@ export function createAiClient(opts: AiClientOptions): AiClient {
   const random = opts.random ?? Math.random;
   const limiter = createLimiter(opts.pool, { rpm: opts.rpm, dailyBudget: opts.dailyBudget, now, sleep });
 
-  // model → time (ms) it may be tried again; in memory, per client (D50).
+  // model → time (ms) it may be tried again; in memory, per client (D50). A dead or worn-out model rests for every
+  // kind; a bad answer rests it for that kind only, since a model that writes bad emails may still label well (D51).
   const restingUntil = new Map<string, number>();
-  const isResting = (model: string) => now().getTime() < (restingUntil.get(model) ?? -Infinity);
+  const restingForKind = new Map<string, number>(); // keyed `${kind}\u0000${model}`
+  const kindKey = (kind: CacheKind, model: string) => `${kind}\u0000${model}`;
+  const isResting = (model: string, kind: CacheKind) =>
+    now().getTime() <
+    Math.max(restingUntil.get(model) ?? -Infinity, restingForKind.get(kindKey(kind, model)) ?? -Infinity);
   const rest = (model: string) => restingUntil.set(model, now().getTime() + restMs);
+  const restForKind = (model: string, kind: CacheKind) =>
+    restingForKind.set(kindKey(kind, model), now().getTime() + restMs);
 
   // One POST. The key goes only into the header; nothing here throws or logs, so it can't leak into a message.
   async function attempt<T>(apiKey: string, model: string, req: AiRequest<T>): Promise<Outcome<T>> {
@@ -124,7 +131,7 @@ export function createAiClient(opts: AiClientOptions): AiClient {
       if (!apiKey || opts.models.length === 0) return null;
 
       for (const model of opts.models) {
-        if (isResting(model)) continue;
+        if (isResting(model, req.kind)) continue;
         for (let i = 0; i < ATTEMPTS; i += 1) {
           const slot = await limiter.acquire();
           if (!slot) return null; // budget used up: no HTTP call at all
@@ -135,7 +142,10 @@ export function createAiClient(opts: AiClientOptions): AiClient {
             await cacheSet(opts.pool, key, req.kind, outcome.value, model);
             return { value: outcome.value, model, source: 'ai' };
           }
-          if (outcome.kind === 'bad_answer') break; // the same model would likely say the same: next model
+          if (outcome.kind === 'bad_answer') {
+            restForKind(model, req.kind); // the same model would likely say the same: next model
+            break;
+          }
           await slot.release();
           if (outcome.kind === 'bad_key') return null;
           if (outcome.kind === 'dead') {
