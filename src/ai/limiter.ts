@@ -6,11 +6,11 @@ export type Limiter = { acquire(): Promise<Slot | null>; usedToday(): Promise<nu
 // One statement, so parallel callers can't both see room under the budget and go over it.
 // No row back means the day's budget is used up.
 const RESERVE_SQL = `
-  INSERT INTO llm_usage (day, calls) VALUES ($1, 1)
-  ON CONFLICT (day) DO UPDATE SET calls = llm_usage.calls + 1 WHERE llm_usage.calls < $2
+  INSERT INTO ai.llm_usage (day, calls) VALUES ($1, 1)
+  ON CONFLICT (day) DO UPDATE SET calls = ai.llm_usage.calls + 1 WHERE ai.llm_usage.calls < $2
   RETURNING calls`;
 
-const RELEASE_SQL = 'UPDATE llm_usage SET calls = GREATEST(calls - 1, 0) WHERE day = $1';
+const RELEASE_SQL = 'UPDATE ai.llm_usage SET calls = GREATEST(calls - 1, 0) WHERE day = $1';
 
 // OpenRouter's daily quota resets on the UTC date, so this is the one place real time matters (src/ai/ only).
 const utcDay = (t: Date): string => t.toISOString().slice(0, 10);
@@ -72,7 +72,7 @@ export function createLimiter(
     },
 
     async usedToday() {
-      const { rows } = await pool.query<{ calls: number }>('SELECT calls FROM llm_usage WHERE day = $1', [
+      const { rows } = await pool.query<{ calls: number }>('SELECT calls FROM ai.llm_usage WHERE day = $1', [
         utcDay(now()),
       ]);
       return rows[0]?.calls ?? 0;

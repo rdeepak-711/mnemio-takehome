@@ -256,8 +256,8 @@ describe('seed with 1000 contacts', () => {
   it('uses only fallback templates and writes no mock_inbox or llm rows', async () => {
     expect(await count(`SELECT count(*) FROM sends WHERE template_source <> 'fallback'`)).toBe(0);
     expect(await count('SELECT count(*) FROM mock_inbox')).toBe(0);
-    expect(await count('SELECT count(*) FROM llm_cache')).toBe(0);
-    expect(await count('SELECT count(*) FROM llm_usage')).toBe(0);
+    expect(await count('SELECT count(*) FROM ai.llm_cache')).toBe(0);
+    expect(await count('SELECT count(*) FROM ai.llm_usage')).toBe(0);
   });
 
   it('a second seed without a reset throws "already seeded" and changes nothing', async () => {

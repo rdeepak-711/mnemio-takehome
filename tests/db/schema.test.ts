@@ -75,7 +75,7 @@ describe('migrations', () => {
     expect(MIGRATIONS_DIR.replace(/\\/g, '/').replace(/\/$/, '')).toMatch(/src\/db\/migrations$/);
   });
 
-  it('creates all 11 tables plus schema_migrations', async () => {
+  it('creates the 9 business tables plus schema_migrations in public (the AI tables are in ai, D52)', async () => {
     const { rows } = await pool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name",
     );
@@ -83,8 +83,6 @@ describe('migrations', () => {
       [
         'contacts',
         'events',
-        'llm_cache',
-        'llm_usage',
         'mock_inbox',
         'mock_outbox',
         'replies',
@@ -96,9 +94,9 @@ describe('migrations', () => {
     );
   });
 
-  it('records 001_init.sql, and a second migrate applies nothing', async () => {
+  it('records 001_init.sql and 002_ai_schema.sql, and a second migrate applies nothing', async () => {
     const { rows } = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name');
-    expect(rows.map((r) => r.name)).toEqual(['001_init.sql']);
+    expect(rows.map((r) => r.name)).toEqual(['001_init.sql', '002_ai_schema.sql']);
     expect(await migrate(pool)).toEqual([]);
   });
 
@@ -117,7 +115,7 @@ describe('migrations', () => {
     await expect(migrate(pool, dir)).rejects.toThrow();
 
     const recorded = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name');
-    expect(recorded.rows.map((r) => r.name)).toEqual(['001_init.sql', 'a_001_ok.sql']);
+    expect(recorded.rows.map((r) => r.name)).toEqual(['001_init.sql', '002_ai_schema.sql', 'a_001_ok.sql']);
     const tables = await pool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_name IN ('t_ok', 't_broken')",
     );

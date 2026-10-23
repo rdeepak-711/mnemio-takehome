@@ -81,7 +81,7 @@ describe('createSequenceWriter', () => {
     expect(await writer.getTemplate('tech:saas', 'follow_up_3')).toEqual({ ...AI_SEQUENCE.follow_up_3, source: 'ai' });
     expect(fake.seen).toHaveLength(1);
     expect(lastPrompt(fake)).toMatch(/SaaS/);
-    const { rows } = await pool.query('SELECT key, kind FROM llm_cache');
+    const { rows } = await pool.query('SELECT key, kind FROM ai.llm_cache');
     expect(rows).toEqual([{ key: cacheKey('sequence', SEQUENCE_PROMPT_VERSION, 'tech:saas'), kind: 'sequence' }]);
   });
 
@@ -237,7 +237,7 @@ describe('createClassifier', () => {
   it('saves each answer per reply, so the same text later (any case or spacing) needs no call', async () => {
     fake.scripts[A] = [answer([[1, 'interested']])];
     await createClassifier(pool, ai())([{ id: 1, body: 'Sounds good, send a link.' }]);
-    const { rows } = await pool.query('SELECT response FROM llm_cache WHERE key = $1', [
+    const { rows } = await pool.query('SELECT response FROM ai.llm_cache WHERE key = $1', [
       cacheKey('classification', CLASSIFY_PROMPT_VERSION, normaliseReply('Sounds good, send a link.')),
     ]);
     expect(rows).toEqual([{ response: { label: 'interested' } }]);
@@ -311,7 +311,7 @@ describe('createClassifier', () => {
     ]);
     expect(result).toEqual(new Map([[10, 'interested']]));
     expect(
-      (await pool.query('SELECT count(*)::int AS n FROM llm_cache WHERE response ? $1', ['label'])).rows[0],
+      (await pool.query('SELECT count(*)::int AS n FROM ai.llm_cache WHERE response ? $1', ['label'])).rows[0],
     ).toEqual({
       n: 1,
     });
