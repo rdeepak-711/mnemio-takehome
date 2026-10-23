@@ -31,13 +31,13 @@ export async function runTick(deps: TickDeps): Promise<TickSummary>;
 export async function advanceDays(
   deps: TickDeps,
   days: number,
-  onDay?: (summary: TickSummary) => void,
+  onDay?: (summary: TickSummary) => void | Promise<void>,
 ): Promise<TickSummary[]>;
 ```
 
 **`runTick(deps)`:** `now = getNow(pool)` (throws "… run npm run seed" when the clock isn't set; don't catch it). Then, in this order and each awaited before the next: `deliverReplies(pool, now)` → `processReplies(pool, now, { config, classify })` → `deactivateDue(pool, now)` → `sendDue(pool, now, { provider, config, getTemplate })`. With `deps.ai` set, this tick builds a **new** `createSequenceWriter(ai)` and `createClassifier(pool, ai)` and passes `writer.getTemplate` and the classifier; without it, both are left out (fallback emails, rules then `needs_review`). A new writer per tick means a segment whose AI answer failed today is asked again tomorrow (D51, D53). Errors from any step propagate.
 
-**`advanceDays(deps, days, onDay?)`:** `days` must be an integer from 1 to `MAX_ADVANCE_DAYS`; otherwise throw an error whose message contains `days` **before touching the database**. Then `days` times: `advance(pool, 1)` (src/clock.ts), `runTick(deps)`, call `onDay` with the summary. Returns the summaries in order.
+**`advanceDays(deps, days, onDay?)`:** `days` must be an integer from 1 to `MAX_ADVANCE_DAYS`; otherwise throw an error whose message contains `days` **before touching the database**. Then `days` times: `advance(pool, 1)` (src/clock.ts), `runTick(deps)`, then `await onDay(summary)` before the next day (so the CLI can query "AI calls today" and print in order with no promise chain). Returns the summaries in order.
 
 ## Part 2 — `src/ai/warm.ts`
 

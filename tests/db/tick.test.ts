@@ -183,6 +183,18 @@ describe('advanceDays', () => {
     expect(seen).toHaveLength(3);
   });
 
+  it('waits for an async onDay before moving the clock again', async () => {
+    const cfg = config({ CONTACT_COUNT: '50' });
+    await seed(pool, cfg);
+    const clockSeen: number[] = [];
+    await advanceDays(deps(cfg), 3, async (s) => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      clockSeen.push((await getNow(pool)).getTime() - s.now.getTime());
+    });
+    // 0 each time: the next day's advance had not started while onDay ran.
+    expect(clockSeen).toEqual([0, 0, 0]);
+  });
+
   it.each([0, -1, 2.5, 366, Number.NaN])('refuses %s days and leaves the clock alone', async (days) => {
     const cfg = config({ CONTACT_COUNT: '50' });
     await seed(pool, cfg);
@@ -205,7 +217,11 @@ describe('with an AI client', () => {
     await advanceDays(deps(cfg, fakeAi()), 6);
 
     expect(await n(`SELECT count(*) FROM sends WHERE template_source = 'ai'`)).toBeGreaterThan(0);
-    expect(await n(`SELECT count(*) FROM replies WHERE label_source = 'ai'`)).toBeGreaterThan(0);
+    expect(
+      await n(
+        `SELECT count(*) FROM replies WHERE label_source = 'ai' AND classified_at >= '${cfg.simStart.toISOString()}'`,
+      ),
+    ).toBeGreaterThan(0);
     expect(await checkInvariants(pool)).toEqual([]);
   });
 
@@ -219,7 +235,11 @@ describe('with an AI client', () => {
     expect(fake.seen.length).toBeGreaterThan(0);
     expect(await n(`SELECT count(*) FROM sends WHERE sent_at >= '${cfg.simStart.toISOString()}'`)).toBeGreaterThan(0);
     expect(await n(`SELECT count(*) FROM sends WHERE template_source <> 'fallback'`)).toBe(0);
-    expect(await n(`SELECT count(*) FROM replies WHERE label_source = 'ai'`)).toBe(0);
+    expect(
+      await n(
+        `SELECT count(*) FROM replies WHERE label_source = 'ai' AND classified_at >= '${cfg.simStart.toISOString()}'`,
+      ),
+    ).toBe(0);
     expect(await checkInvariants(pool)).toEqual([]);
   });
 
