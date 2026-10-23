@@ -298,6 +298,19 @@ describe('a model that just failed is skipped for a while', () => {
   });
 });
 
+describe('a model that gives bad answers rests for that kind of request only', () => {
+  it('after a bad sequence, the next sequence skips that model, but classification still uses it', async () => {
+    scripts[A] = [okText('not json'), ok(ANSWER)];
+    scripts[B] = [ok(ANSWER), ok(ANSWER)];
+    const ai = client();
+    const sequence = (input: string): AiRequest<z.infer<typeof Labels>> => ({ ...request(input), kind: 'sequence' });
+    expect((await ai.complete(sequence('one')))?.model).toBe(B);
+    expect((await ai.complete(sequence('two')))?.model).toBe(B);
+    expect(requestsTo(A)).toBe(1);
+    expect((await ai.complete(request('a reply')))?.model).toBe(A);
+  });
+});
+
 describe('the daily budget', () => {
   it('with the budget used up, no HTTP call is made and the result is null', async () => {
     await pool.query('INSERT INTO llm_usage (day, calls) VALUES ($1, 2)', [DAY]);

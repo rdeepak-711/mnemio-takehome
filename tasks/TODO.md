@@ -31,7 +31,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 
 ## Layer 4 — AI
 - ✅ T16 OpenRouter client (limiter, retries, cache, fallback, model pick)
-- ☐ T17 Sequence writer + batch classifier
+- 🧪 T17 Sequence writer + batch classifier
 
 ## Layer 5 — Whole system
 - ☐ T18 Tick + advance CLI
