@@ -55,3 +55,11 @@ The account counter still read 1 used after Flint's success, so the count may la
 - **Sequence, prompt v2:** Flint, 28 s, valid, laid out properly ("Hi {{first_name}}," / paragraphs / "Thanks," / "Sam"). Plain but usable wording.
 - **Classifier:** the 12 reply-bank texts that the rules return `null` for, in one call, 7.5 s: 11 matched the mock's true label. Miss: "Who gave you my address?" (true `not_interested`, AI `needs_review`), the bank's deliberately ambiguous text.
 - Account usage after these runs: 3 of 50 free requests.
+
+## First full engine runs — 2026-10-23 (T18)
+
+Probe database, 10,000-contact seed, no OpenRouter key (cache only: 1 sequence and 13 reply labels saved from earlier probes).
+- `advance --days 30`: 62.8 s wall clock, `invariants: ok`. A second `advance --days 30` found nothing left to do (every day 0), `invariants: ok`.
+- After 60 days every contact had left the sequence: 7,160 deactivated, 1,883 replied, 503 unsubscribed, 454 bounced.
+- With no key, saved answers were still used: 1,339 sends came from the one cached sequence (`template_source = 'cache'`), and 1,454 replies were labelled from the 13 cached reply labels. The reply bank is a fixed set of texts, so a handful of saved labels covers most replies. The rest: 640 by rule, 12 fallback.
+- Day lines in the first 30 days show deactivation peaks around 700 a day near day 25, as the seeded `follow_up_3_sent` group and the first wave of new contacts reach the end of their waits.

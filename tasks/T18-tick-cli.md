@@ -31,7 +31,7 @@ export async function runTick(deps: TickDeps): Promise<TickSummary>;
 export async function advanceDays(
   deps: TickDeps,
   days: number,
-  onDay?: (summary: TickSummary) => void | Promise<void>,
+  onDay?: (summary: TickSummary) => unknown, // unknown: a `void | Promise<void>` union rejects `(s) => seen.push(s.now)`
 ): Promise<TickSummary[]>;
 ```
 

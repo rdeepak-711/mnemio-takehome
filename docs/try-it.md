@@ -33,7 +33,7 @@ npm run advance -- --days 1      # move the clock 1 day and tick
 npm run advance -- --days 30     # 30 more days
 ```
 
-Each day prints a line: date, replies delivered and labelled (rule / ai / fallback), deactivated, sent, bounced, suppressed, AI calls used today. The run ends with `invariants: ok`.
+Each day prints a line: date, replies delivered and labelled (rule / ai / fallback), deactivated, sent, bounced, suppressed, AI calls used today out of `DAILY_AI_BUDGET` (45 by default, a margin under OpenRouter's 50). The run ends with `invariants: ok`.
 
 ## 4. Look at what happened
 

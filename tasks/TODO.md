@@ -35,7 +35,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - ✅ T17b Keep the AI cache and call count through a reset (D52)
 
 ## Layer 5 — Whole system
-- 🧪 T18 Tick + advance CLI
+- 🗣 T18 Tick + advance CLI
 - ☐ T19 Report (+ classifier accuracy)
 - ☐ T20 Full 10k run, timed
 
