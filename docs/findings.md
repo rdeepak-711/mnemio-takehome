@@ -68,3 +68,7 @@ Probe database, 10,000-contact seed, no OpenRouter key (cache only: 1 sequence a
 ## First report on a finished run — 2026-10-23 (T19)
 
 Same probe database after 60 days, no key, cache only. Reply rate 28.8% (2,769 of 9,615 contacts with an accepted send), which fits the mock's 8% chance per email across up to 4 emails. Bounce rate 1.3% (454 of 35,245 sends, seed included). Engine emails: 1,339 from the cached sequence, 25,256 fallback. Classifier since start: rules 640 of 640 correct, AI (all from 13 cached labels) 1,324 of 1,454 correct (91.1%), 12 fallback; 142 needs review; 0 unlabelled; 0 orphaned.
+
+## The timed full run — 2026-10-23 (T20)
+
+`npm run full-run` on the probe database, 10,000 contacts, no key (cache: 1 sequence, 13 labels). reset 0.1 s, seed 1.1 s, warm 0.0 s, advance 54.1 s over 40 days, check 0.1 s, report 0.0 s, total 55.6 s; exit 0, invariants ok, 0 orphaned. The final report was identical to the earlier `advance --days 30` twice on the same seed (same statuses, rates and classifier counts), so the outcome doesn't depend on how the days are stepped. Day 1 sent 3,203 emails (88 bounced); days 2 and 3 about 1,350 each.

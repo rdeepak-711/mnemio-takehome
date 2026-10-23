@@ -118,6 +118,10 @@ Two jobs use the AI, both through the one door from T16. **Writing emails:** the
 
 `npm run report` prints one page of numbers about where the run stands, and changes nothing. Most of it is about the pretend calendar: "sent today" means today on the simulated calendar, not today in real life. The one real-life number is "AI calls today", because the free AI account counts real days. Two numbers judge the engine itself, so they only look at what happened after the simulation started and ignore the made-up history the seed created: where the emails came from (AI, saved answer, or hand-written backup), and how often the reply-sorting matched the mock's secret true label. The seed's own replies are left out on purpose, because the seed simply wrote the right answer in, which would make the sorting look perfect. The last line is a health check: replies nobody labelled, and "orphaned" mock replies (an answer to an email that was never recorded as sent), which should both be 0 after a clean run.
 
+## The whole thing, start to finish (built in T20)
+
+`npm run full-run` is the one command that shows everything the brief asks about. It wipes the business data (keeping the AI's saved answers), creates the 10,000 people, has the AI write the 20 groups' emails if there's a key, then presses "next day" over and over until nobody is left waiting for an email, with a cap of 60 days. Then it runs the inspector over every contact and prints the scoreboard, with a stopwatch time for each part. On a MacBook with no key it took 56 seconds for 40 simulated days. Because the mock decides every outcome from a hash of the email's id rather than a dice roll, running it twice gives exactly the same result, which is what makes the numbers in the README checkable.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
