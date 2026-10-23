@@ -16,7 +16,7 @@ npm install
 cp .env.example .env             # the defaults work; the AI key is only needed from T16 on
 npm run db:reset                 # build the tables (keeps saved AI answers)
 npm run seed                     # 10,000 contacts with history; prints "invariants: ok"
-npm test                         # 787 automated tests
+npm test                         # 797 automated tests
 ```
 
 `npm run seed` takes about 1 second on a MacBook. Running it twice without `db:reset` is refused.
@@ -27,9 +27,10 @@ Run the engine:
 npm run ai:warm                  # optional, with a key: write the 20 email sequences once (cached after)
 npm run tick                     # one tick at the current simulated time
 npm run advance -- --days 30     # move the clock a day and tick, 30 times; ends with "invariants: ok"
+npm run report                   # where things stand: statuses, rates, template sources, classifier accuracy
 ```
 
-On the 10,000-contact seed with no AI key, `advance --days 30` took 63 seconds on a MacBook (measured 23 Oct; T20 times the full run). A step-by-step tour, including clearing the AI cache, is in [`docs/try-it.md`](docs/try-it.md). Coming next: `npm run report` and the dashboard.
+On the 10,000-contact seed with no AI key, `advance --days 30` took 63 seconds on a MacBook (measured 23 Oct; T20 times the full run). A step-by-step tour, including clearing the AI cache, is in [`docs/try-it.md`](docs/try-it.md). Coming next: the timed full run (T20) and the dashboard.
 
 ## Architecture
 
