@@ -16,7 +16,7 @@ import { z } from 'zod';
 import type { Step } from '../lifecycle';
 import type { AiClient, ChatMessage } from './client';
 import type { Template } from '../engine/send';
-export const SEQUENCE_PROMPT_VERSION = 'sequence-v1';
+export const SEQUENCE_PROMPT_VERSION = 'sequence-v2'; // v2: layout rules added after the first live run
 export const TIME_SPAN_PATTERN: RegExp;       // /last week|yesterday|days ago|weeks ago/i — not global
 export type Sequence = Record<Step, { subject: string; body: string }>;
 export const SequenceSchema: z.ZodType<Sequence>;
@@ -30,11 +30,12 @@ export function createSequenceWriter(ai: AiClient): SequenceWriter;
 - has a body without `{{first_name}}`;
 - fails to `render` with sample values (`first_name: 'Ann'`, `last_name: 'Lee'`, `company: 'Acme Logistics'`, `role: 'Head of Operations'`, `industry: 'logistics'`) or the rendered email has any `checkContent` problem (leftover braces, empty or long subject, long body, spam words);
 - matches `TIME_SPAN_PATTERN` (D47);
+- has a body with no blank line (`\n\n`) between paragraphs, or whose last line (trimmed) isn't exactly `Sam` (found live: Flint wrote each email as one run-on line ending "… today? Sam");
 - or two steps share the same body.
 
 A sequence that fails is a "bad answer" to the client, so it moves to the next model.
 
-**`sequenceMessages(segment)`:** a system message and a user message. Describe the audience in words from the segment (`<role family>:<industry>`): role family → founders / sales leaders / operations and finance leaders / technical leaders (CTOs, engineering); industry → `SaaS`, `e-commerce`, `fintech`, `healthcare`, `logistics`. The pitch matches the fallback emails (help with follow-up emails; signed "Sam"). Rules in the prompt: plain and short; greet with `{{first_name}}`; only the five slots, written exactly as `{{first_name}}`, `{{last_name}}`, `{{company}}`, `{{role}}`, `{{industry}}`; no other braces; subject ≤ 120 and body ≤ 1200 characters; no spam phrases (list `SPAM_WORDS`); follow-ups refer to "my earlier email" and never name a time span; `follow_up_3` closes the loop politely. Answer: only JSON `{"first":{"subject":…,"body":…},"follow_up_1":…,"follow_up_2":…,"follow_up_3":…}`.
+**`sequenceMessages(segment)`:** a system message and a user message. Describe the audience in words from the segment (`<role family>:<industry>`): role family → founders / sales leaders / operations and finance leaders / technical leaders (CTOs, engineering); industry → `SaaS`, `e-commerce`, `fintech`, `healthcare`, `logistics`. The pitch matches the fallback emails (help with follow-up emails; signed "Sam"). Rules in the prompt: plain and short; greet with `{{first_name}}`; only the five slots, written exactly as `{{first_name}}`, `{{last_name}}`, `{{company}}`, `{{role}}`, `{{industry}}`; no other braces; subject ≤ 120 and body ≤ 1200 characters; no spam phrases (list `SPAM_WORDS`); follow-ups refer to "my earlier email" and never name a time span; `follow_up_3` closes the loop politely. Layout: the greeting on its own line, a blank line between paragraphs, a sign-off line such as `Thanks,` and `Sam` alone on the last line. Answer: only JSON `{"first":{"subject":…,"body":…},"follow_up_1":…,"follow_up_2":…,"follow_up_3":…}`.
 
 **`createSequenceWriter(ai)`:** `getTemplate` is an arrow function (it's passed as `getTemplate: writer.getTemplate`).
 - Unknown segment (not in `allSegments()`) → `null`, no call.

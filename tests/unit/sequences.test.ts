@@ -61,6 +61,22 @@ describe('SequenceSchema', () => {
     expect(SequenceSchema.safeParse(withStep('follow_up_1', { body })).success).toBe(false);
   });
 
+  // Found live (T17): Flint wrote each email as one run-on line with "Sam" at the end of it.
+  it('rejects a body written as one line (no blank line between paragraphs)', () => {
+    const body = 'Hi {{first_name}}, Just following up on my earlier email. How does {{company}} handle it? Sam';
+    expect(SequenceSchema.safeParse(withStep('follow_up_1', { body })).success).toBe(false);
+  });
+
+  it('rejects a body whose sign-off "Sam" is not on its own last line', () => {
+    const body = 'Hi {{first_name}},\n\nJust following up on my earlier email. Thanks, Sam';
+    expect(SequenceSchema.safeParse(withStep('follow_up_1', { body })).success).toBe(false);
+  });
+
+  it('accepts a sign-off line like "Best,\\nSam" or "Thanks,\\nSam"', () => {
+    const body = 'Hi {{first_name}},\n\nJust following up on my earlier email.\n\nBest,\nSam';
+    expect(SequenceSchema.safeParse(withStep('follow_up_1', { body })).success).toBe(true);
+  });
+
   it('rejects two steps with the same body', () => {
     expect(SequenceSchema.safeParse(withStep('follow_up_2', { body: GOOD.follow_up_1.body })).success).toBe(false);
   });
@@ -83,6 +99,14 @@ describe('sequenceMessages', () => {
     for (const step of STEPS) expect(text).toContain(step);
     expect(text).toMatch(/JSON/);
     expect(text).toMatch(/Sam/);
+  });
+
+  it('asks for the layout: greeting on its own line, blank lines between paragraphs, Sam on the last line', () => {
+    const text = sequenceMessages('tech:saas')
+      .map((m) => m.content)
+      .join('\n');
+    expect(text).toMatch(/blank line|\\n\\n/i);
+    expect(text).toMatch(/own line|last line/i);
   });
 
   it('is different for each of the 20 segments', () => {
