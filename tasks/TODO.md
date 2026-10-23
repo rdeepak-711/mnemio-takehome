@@ -30,7 +30,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - ✅ T15 Deactivation
 
 ## Layer 4 — AI
-- ☐ T16 OpenRouter client (limiter, retries, cache, fallback, model pick)
+- 🧪 T16 OpenRouter client (limiter, retries, cache, fallback, model pick)
 - ☐ T17 Sequence writer + batch classifier
 
 ## Layer 5 — Whole system
