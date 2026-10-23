@@ -47,6 +47,7 @@ describe('the command line', () => {
     expect(pkg.scripts.tick).toBe('tsx src/main.ts run');
     expect(pkg.scripts.advance).toBe('tsx src/main.ts advance');
     expect(pkg.scripts['ai:warm']).toBe('tsx src/main.ts ai:warm');
+    expect(pkg.scripts.report).toBe('tsx src/main.ts report');
   });
 
   it('advance --days 2 prints two day lines, checks the invariants and moves the clock 2 days', async () => {
@@ -89,5 +90,14 @@ describe('the command line', () => {
     expect(run.stdout).toContain('no OPENROUTER_API_KEY');
     expect(run.stdout.split('\n').filter((line) => /^\S+:\S+ {2}fallback$/.test(line))).toHaveLength(20);
     expect(run.stdout).toContain('warmed 20 segments: 0 ai, 0 cache, 20 fallback');
+  }, 30_000);
+
+  it('report prints the summary without changing anything', async () => {
+    await seed(pool, cfg);
+    const run = await cli('report');
+    expect(run.code).toBe(0);
+    expect(run.stdout).toContain('Report for 2026-11-02 (simulated)');
+    expect(run.stdout).toContain('Contacts: 200 ·');
+    expect((await getNow(pool)).getTime()).toBe(cfg.simStart.getTime());
   }, 30_000);
 });
