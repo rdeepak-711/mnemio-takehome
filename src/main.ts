@@ -9,8 +9,9 @@ import { closePool, getPool } from './db/pool';
 import { advanceDays, runTick } from './engine/tick';
 import { checkInvariants } from './invariants';
 import { createProvider } from './mock/provider';
+import { formatReport, report } from './report';
 
-// `npm run tick`, `npm run advance -- --days N`, `npm run ai:warm`.
+// `npm run tick`, `npm run advance -- --days N`, `npm run ai:warm`, `npm run report`.
 // dotenv never overrides variables already set, so variables from the shell win over .env.
 if (existsSync('.env')) loadEnv({ path: '.env', quiet: true });
 
@@ -46,7 +47,10 @@ if (command) {
       return rows[0]?.calls ?? 0;
     };
 
-    if (command.command === 'ai:warm') {
+    if (command.command === 'report') {
+      // Read-only, so no invariants check.
+      console.log(formatReport(await report(pool, { simStart: config.simStart, dailyAiBudget: config.dailyAiBudget })));
+    } else if (command.command === 'ai:warm') {
       if (!config.openrouterApiKey) console.log('no OPENROUTER_API_KEY: every sequence uses the fallback');
       const results = await warmSequences(ai);
       for (const r of results) console.log(`${r.segment}  ${r.source}`);

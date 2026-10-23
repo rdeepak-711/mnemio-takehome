@@ -24,7 +24,7 @@ async function contact(status: string, nextAction: string | null = null, nextAt:
 async function send(contactId: number, step: string, outcome: string, source: string, sentAt: string) {
   const { rows } = await pool.query<{ id: number }>(
     `INSERT INTO sends (contact_id, step, idempotency_key, outcome, subject, body, template_source, sent_at)
-     VALUES ($1, $2, $1 || ':' || $2, $3, 's', 'b', $4, $5) RETURNING id`,
+     VALUES ($1, $2, $1::int::text || ':' || $2, $3, 's', 'b', $4, $5) RETURNING id`,
     [contactId, step, outcome, source, sentAt],
   );
   return rows[0]!.id;
