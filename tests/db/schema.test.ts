@@ -75,7 +75,7 @@ describe('migrations', () => {
     expect(MIGRATIONS_DIR.replace(/\\/g, '/').replace(/\/$/, '')).toMatch(/src\/db\/migrations$/);
   });
 
-  it('creates all 11 tables plus schema_migrations', async () => {
+  it('creates the 9 business tables plus schema_migrations in public (the AI tables are in ai, D52)', async () => {
     const { rows } = await pool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name",
     );
@@ -83,8 +83,6 @@ describe('migrations', () => {
       [
         'contacts',
         'events',
-        'llm_cache',
-        'llm_usage',
         'mock_inbox',
         'mock_outbox',
         'replies',

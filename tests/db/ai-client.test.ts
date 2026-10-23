@@ -100,7 +100,7 @@ function request(input = 'sounds good', promptVersion = 'v1'): AiRequest<z.infer
 
 const requestsTo = (model: string) => seen.filter((s) => s.body.model === model).length;
 async function usage(day = DAY): Promise<number> {
-  const { rows } = await pool.query<{ calls: number }>('SELECT calls FROM llm_usage WHERE day = $1', [day]);
+  const { rows } = await pool.query<{ calls: number }>('SELECT calls FROM ai.llm_usage WHERE day = $1', [day]);
   return rows[0]?.calls ?? 0;
 }
 
@@ -140,7 +140,7 @@ describe('a successful call', () => {
     expect(seen[0]!.body).not.toHaveProperty('response_format');
 
     expect(await usage()).toBe(1);
-    const { rows } = await pool.query('SELECT key, kind, response, model FROM llm_cache');
+    const { rows } = await pool.query('SELECT key, kind, response, model FROM ai.llm_cache');
     expect(rows).toEqual([
       { key: cacheKey('classification', 'v1', 'sounds good'), kind: 'classification', response: ANSWER, model: A },
     ]);
@@ -178,7 +178,7 @@ describe('the cache', () => {
   });
 
   it('a cached answer that no longer fits the schema is ignored and asked again', async () => {
-    await pool.query(`INSERT INTO llm_cache (key, kind, response, model) VALUES ($1, 'classification', $2, $3)`, [
+    await pool.query(`INSERT INTO ai.llm_cache (key, kind, response, model) VALUES ($1, 'classification', $2, $3)`, [
       cacheKey('classification', 'v1', 'sounds good'),
       JSON.stringify({ wrong: true }),
       A,
@@ -268,7 +268,7 @@ describe('retries and the next model', () => {
     scripts[B] = [status(404)];
     expect(await client().complete(request())).toBeNull();
     expect(await usage()).toBe(0);
-    expect((await pool.query('SELECT count(*)::int AS n FROM llm_cache')).rows[0]).toEqual({ n: 0 });
+    expect((await pool.query('SELECT count(*)::int AS n FROM ai.llm_cache')).rows[0]).toEqual({ n: 0 });
   });
 });
 
@@ -313,7 +313,7 @@ describe('a model that gives bad answers rests for that kind of request only', (
 
 describe('the daily budget', () => {
   it('with the budget used up, no HTTP call is made and the result is null', async () => {
-    await pool.query('INSERT INTO llm_usage (day, calls) VALUES ($1, 2)', [DAY]);
+    await pool.query('INSERT INTO ai.llm_usage (day, calls) VALUES ($1, 2)', [DAY]);
     scripts[A] = [ok(ANSWER)];
     expect(await client({ dailyBudget: 2 }).complete(request())).toBeNull();
     expect(seen).toHaveLength(0);
