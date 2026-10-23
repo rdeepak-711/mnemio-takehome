@@ -104,6 +104,21 @@ describe('upgrading a database made before the ai schema', () => {
     ).toBe(0);
   });
 
+  it('a keepAi reset of a database still in the old layout moves the public rows instead of dropping them', async () => {
+    await pool.query('DROP SCHEMA IF EXISTS ai CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
+    const dir = await mkdtemp(join(tmpdir(), 'mnemio-001-'));
+    await copyFile(join(MIGRATIONS_DIR, '001_init.sql'), join(dir, '001_init.sql'));
+    await migrate(pool, dir);
+    await pool.query(
+      `INSERT INTO public.llm_cache (key, kind, response, model) VALUES ('old', 'classification', '{"label":"interested"}', 'm:free')`,
+    );
+    await pool.query(`INSERT INTO public.llm_usage (day, calls) VALUES ('2026-10-23', 3)`);
+
+    await resetDb(pool, MIGRATIONS_DIR, { keepAi: true });
+    expect(await n(`SELECT count(*) FROM ai.llm_cache WHERE key = 'old'`)).toBe(1);
+    expect(await n(`SELECT calls FROM ai.llm_usage WHERE day = '2026-10-23'`)).toBe(3);
+  });
+
   it('a kept count is never lowered when the old rows are copied in again', async () => {
     await pool.query(`INSERT INTO ai.llm_usage (day, calls) VALUES ('2026-10-23', 9)`);
     await resetDb(pool, MIGRATIONS_DIR, { keepAi: true });

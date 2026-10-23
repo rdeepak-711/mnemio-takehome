@@ -94,9 +94,9 @@ describe('migrations', () => {
     );
   });
 
-  it('records 001_init.sql, and a second migrate applies nothing', async () => {
+  it('records 001_init.sql and 002_ai_schema.sql, and a second migrate applies nothing', async () => {
     const { rows } = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name');
-    expect(rows.map((r) => r.name)).toEqual(['001_init.sql']);
+    expect(rows.map((r) => r.name)).toEqual(['001_init.sql', '002_ai_schema.sql']);
     expect(await migrate(pool)).toEqual([]);
   });
 
@@ -115,7 +115,7 @@ describe('migrations', () => {
     await expect(migrate(pool, dir)).rejects.toThrow();
 
     const recorded = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name');
-    expect(recorded.rows.map((r) => r.name)).toEqual(['001_init.sql', 'a_001_ok.sql']);
+    expect(recorded.rows.map((r) => r.name)).toEqual(['001_init.sql', '002_ai_schema.sql', 'a_001_ok.sql']);
     const tables = await pool.query<{ table_name: string }>(
       "SELECT table_name FROM information_schema.tables WHERE table_name IN ('t_ok', 't_broken')",
     );
