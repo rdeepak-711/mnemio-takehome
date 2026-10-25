@@ -27,6 +27,7 @@ export type Delivery = {
   pauseDays: number;
   sendWindow: { startHour: number; endHour: number }; // local hours, start inclusive, end exclusive
   domainDailyCap: number;
+  pacing: boolean; // SEND_PACING: at most daily limit ÷ window hours per UTC hour (D72)
 };
 
 type Env = Record<string, string | undefined>;
@@ -100,12 +101,16 @@ function parseSendWindow(raw: string): Delivery['sendWindow'] {
   return { startHour, endHour };
 }
 
-// The eight settings are validated even when DELIVERABILITY is off, so a typo never hides until it's switched on.
+// An on/off switch, trimmed and case-insensitive; empty or unset means on.
+function onOff(env: Env, name: string): boolean {
+  const raw = read(env, name, 'on').trim().toLowerCase();
+  if (raw !== 'on' && raw !== 'off') throw new Error(`${name}: expected on or off (got "${env[name]}")`);
+  return raw === 'on';
+}
+
+// The nine settings are validated even when DELIVERABILITY is off, so a typo never hides until it's switched on.
 function parseDelivery(env: Env): Delivery | null {
-  const switchRaw = read(env, 'DELIVERABILITY', 'on').trim().toLowerCase();
-  if (switchRaw !== 'on' && switchRaw !== 'off') {
-    throw new Error(`DELIVERABILITY: expected on or off (got "${env.DELIVERABILITY}")`);
-  }
+  const on = onOff(env, 'DELIVERABILITY');
   const warmup = {
     start: check('WARMUP_START', int(1), read(env, 'WARMUP_START', '20')),
     step: check('WARMUP_STEP', int(0), read(env, 'WARMUP_STEP', '10')),
@@ -121,8 +126,9 @@ function parseDelivery(env: Env): Delivery | null {
     pauseDays: check('PAUSE_DAYS', int(1), read(env, 'PAUSE_DAYS', '3')),
     sendWindow: parseSendWindow(read(env, 'SEND_WINDOW', '9-17')),
     domainDailyCap: check('DOMAIN_DAILY_CAP', int(1), read(env, 'DOMAIN_DAILY_CAP', '10')),
+    pacing: onOff(env, 'SEND_PACING'),
   };
-  return switchRaw === 'on' ? delivery : null;
+  return on ? delivery : null;
 }
 
 export function loadConfig(env: Env): Config {
