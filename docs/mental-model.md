@@ -142,6 +142,10 @@ The **Deliverability** page shows one simulated day of T22's habits. The top row
 
 A past day has to be rebuilt from history, not from today's settings. A mailbox's allowance for 4 November is worked out from when it was created and from the pauses recorded in `mailbox_pauses`, the same rule the checker uses, because the mailbox row only remembers its current warm-up start.
 
+## Spreading the day out (built in T22c)
+
+Warm-up alone still let a mailbox spend its whole day in one go: at 09:00 its allowance was there, and the engine used all of it in the first hour with due contacts. Real senders trickle. With `SEND_PACING=on` (the default), a mailbox may send at most its daily allowance divided by the hours of the send window, rounded up, in any one UTC hour. With 80 a day and a 9–17 window that is 80 ÷ 8 = 10 an hour. Once a mailbox has used its 10, the engine moves to the next mailbox, so the hour's emails spread across mailboxes too. The daily allowance still applies on top: at 12 a day the share is 2 an hour, and after six hours the mailbox stops at 12. The hours are UTC hours, not the prospect's, because one mailbox writes to people all over the world; a mailbox can be busy in many hours of a UTC day while each prospect still only hears from it in their own working hours. Invariant 13 checks after a run that no mailbox ever sent more than its share in an hour.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
