@@ -1,16 +1,13 @@
 import { existsSync } from 'node:fs';
-import pg from 'pg';
 import { config as loadEnv } from 'dotenv';
-import { createAiClient } from './ai/client';
 import { warmSequences } from './ai/warm';
 import { parseArgs, formatTick, type Command } from './cli';
-import { loadConfig } from './config';
-import { closePool, getPool } from './db/pool';
+import { closePool } from './db/pool';
 import { advanceDays, runTick, type TickSummary } from './engine/tick';
 import { checkInvariants, type Violation } from './invariants';
 import { formatFullRun, fullRun } from './full-run';
-import { createProvider } from './mock/provider';
 import { formatReport, report } from './report';
+import { openRuntime, type Runtime } from './runtime';
 
 // `npm run tick`, `npm run advance -- --days N`, `npm run ai:warm`, `npm run report`, `npm run full-run`.
 // dotenv never overrides variables already set, so variables from the shell win over .env.
@@ -35,20 +32,10 @@ try {
 }
 
 if (command) {
-  let providerPool: pg.Pool | null = null;
+  let runtime: Runtime | null = null;
   try {
-    const config = loadConfig(process.env);
-    const pool = getPool(config.databaseUrl);
-    // The provider gets its own pool, so a send can't share a connection with the engine's transactions (D43).
-    providerPool = new pg.Pool({ connectionString: config.databaseUrl });
-    const provider = createProvider(providerPool, config);
-    const ai = createAiClient({
-      pool,
-      apiKey: config.openrouterApiKey,
-      models: config.openrouterModels,
-      rpm: config.aiRpm,
-      dailyBudget: config.dailyAiBudget,
-    });
+    runtime = openRuntime(process.env);
+    const { config, pool, provider, ai } = runtime;
 
     // "Today" is the UTC date, as in src/ai/limiter.ts; Postgres supplies it so no real clock is read here.
     const callsToday = async (): Promise<number> => {
@@ -96,7 +83,8 @@ if (command) {
     console.error(err instanceof Error ? err.message : String(err));
     process.exitCode = 1;
   } finally {
-    await closePool();
-    await providerPool?.end();
+    // A refused runtime (bad config, paid model) built no provider pool; the shared pool may still be cached.
+    if (runtime) await runtime.close();
+    else await closePool();
   }
 }

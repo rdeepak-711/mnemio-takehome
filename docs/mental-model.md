@@ -122,6 +122,10 @@ Two jobs use the AI, both through the one door from T16. **Writing emails:** the
 
 `npm run full-run` is the one command that shows everything the brief asks about. It wipes the business data (keeping the AI's saved answers), creates the 10,000 people, has the AI write the 20 groups' emails if there's a key, then presses "next day" over and over until nobody is left waiting for an email, with a cap of 60 days. Then it runs the inspector over every contact and prints the scoreboard, with a stopwatch time for each part. On a MacBook with no key it took 56 seconds for 40 simulated days. Because the mock decides every outcome from a hash of the email's id rather than a dice roll, running it twice gives exactly the same result, which is what makes the numbers in the README checkable.
 
+## The window onto it all (built in T21a)
+
+`npm run dev` opens a web page onto the same database the commands use. It has three pages. The overview shows the headline numbers, a slider that picks a day, a funnel of how many people were at each stage at the end of that day, and a bar chart of emails, replies and bounces per day. The journey page draws the nine stages as boxes and, for the chosen day, arrows between them labelled with how many people moved. The contacts page is a searchable list of everyone, 50 at a time, where clicking a person shows every email, reply and status change they had, in order. Nothing on these pages is stored anywhere new: to answer "what did things look like on 3 November?", the page asks the server, and the server reads the diary (`events`) and finds, for each person, the last status change before midnight at the end of that day. On today's date that gives exactly the statuses stored on the contacts themselves, which a test checks. Days before the simulation started are labelled "seeded history", because the seed made them up; later days are "simulated", because the engine ran them. The "advance" and "reset" buttons don't have their own logic: they call the very same functions as `npm run advance` and `npm run full-run`'s reset and seed. Only one button press runs at a time. A second click while the first is still running is refused straight away, so two quick clicks on "advance 7 days" move the calendar 7 days, not 14. The page code never talks to the database directly; it asks small server addresses (`/api/...`), and those hand the question to the query functions in `src/web/`, which is where all the SQL lives.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
@@ -142,3 +146,5 @@ Two jobs use the AI, both through the one door from T16. **Writing emails:** the
 - **Connection pool:** a small set of open database connections that code borrows and returns.
 - **Row lock:** a mark the database puts on a row so other transactions can't take it until the lock is released.
 - **Transaction:** a group of database changes that are kept all together or not at all.
+- **Route handler:** a small server function at a web address such as `/api/summary`; the page calls it, it calls the query code and returns JSON.
+- **Seeded history / simulated:** days before `SIM_START` were invented by the seed; days from `SIM_START` on were produced by the engine.

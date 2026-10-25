@@ -1,10 +1,11 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type pg from 'pg';
 
-// Absolute path of src/db/migrations, wherever the process was started from.
-export const MIGRATIONS_DIR = fileURLToPath(new URL('./migrations/', import.meta.url));
+// Absolute path of src/db/migrations, wherever the process was started from. Built with path functions, not
+// new URL('./migrations/', import.meta.url): Next's bundler reads that form as an asset import of a folder and fails (D59).
+export const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'migrations');
 
 // Applies every *.sql file in `dir` not yet recorded in schema_migrations, in file-name order.
 // Each file runs in its own transaction together with its schema_migrations row, so a file that

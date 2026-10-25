@@ -47,7 +47,18 @@ npm run full-run                 # reset (keeps the AI cache) → seed → warm 
 
 Final state: 1,883 replied, 454 bounced, 503 unsubscribed, 7,160 deactivated, 0 still in sequence. Reply rate 28.8% (2,769 of 9,615 contacts with an accepted send); bounce rate 1.3% (454 of 35,245 sends, seed included). 26,595 emails sent by the engine: 1,339 from the cached AI sequence, 25,256 fallback. Replies: rules labelled 640 (all correct against the mock's true label), cached AI labels 1,454 (1,324 correct, 91.1%), 12 fell back; 142 need review, 0 unlabelled, 0 orphaned. A second run on the same seed gave identical numbers. A run with a key adds the AI's minutes to "warm" (about 28 s per sequence on the free models, once; cached after).
 
-A step-by-step tour, including clearing the AI cache, is in [`docs/try-it.md`](docs/try-it.md). Coming next: the dashboard.
+A step-by-step tour, including clearing the AI cache, is in [`docs/try-it.md`](docs/try-it.md).
+
+### Dashboard
+
+A browser view onto the same database (T21a, `spec/dashboard.md`). It reads `DATABASE_URL` from `.env` like the CLI, so seed first.
+
+```bash
+npm run dev                      # http://localhost:3000, reloads on change
+npm run build && npm start       # or the production build, same port
+```
+
+Three pages: **Overview** (`/`: KPIs, a day slider with the funnel as of that day, the daily activity chart), **Journey** (`/journey`: the nine stages and who moved between them on a day) and **Contacts** (`/contacts`: 50 per page, search, status filter, a detail panel with every send, reply and event). Every number is rebuilt from the database for the end of the selected simulated UTC day (D57); days before `SIM_START` are marked "seeded history". The header buttons advance the clock 1 or 7 days, or reset (`db:reset` keeping the AI cache, then `seed`), through the same engine functions as the CLI, one at a time (D58); the request stays open until every day has run, and in the CLI runs on 10,000 contacts with no AI key each simulated day took 0.3–2.0 seconds, so "advance 7 days" can take up to about 15 seconds (more with an AI key). There is no login, so run it on your own machine only.
 
 ## Architecture
 
