@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, type KeyboardEvent } from 'react';
 import { STATUSES, type Status } from '../../src/lifecycle';
 import type { Move } from '../../src/web/journey';
 import { useJourneyPlay } from '../_anim/motion';
@@ -70,10 +70,12 @@ export function JourneyMap({
   moves,
   counts,
   playKey,
+  onSelect,
 }: {
   moves: Move[];
   counts: Record<Status, number> | null;
   playKey: number | null;
+  onSelect?: (status: Status) => void; // a stage box opens the drill-down (D62)
 }) {
   const ref = useRef<SVGSVGElement>(null);
   useJourneyPlay(ref, playKey);
@@ -91,7 +93,7 @@ export function JourneyMap({
       ref={ref}
       className="journey-svg"
       viewBox={`0 0 ${W} ${H}`}
-      role="img"
+      role={onSelect ? 'group' : 'img'}
       aria-label="Contact journey: stages and the moves between them on the selected day"
     >
       <defs>
@@ -113,7 +115,22 @@ export function JourneyMap({
       {STATUSES.map((s) => {
         const p = POS[s];
         return (
-          <g key={s} className="stage">
+          <g
+            key={s}
+            className={onSelect ? 'stage stage-button' : 'stage'}
+            {...(onSelect && {
+              tabIndex: 0,
+              role: 'button',
+              'aria-label': `${STATUS_LABEL[s]}: ${counts ? fmtInt(counts[s]) : 'loading'} contacts. Show who`,
+              onClick: () => onSelect(s),
+              onKeyDown: (e: KeyboardEvent<SVGGElement>) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelect(s);
+                }
+              },
+            })}
+          >
             <rect x={p.x - BOX.w / 2} y={p.y - BOX.h / 2} width={BOX.w} height={BOX.h} rx={8} />
             <circle cx={p.x - BOX.w / 2 + 14} cy={p.y - 7} r={4} fill={`var(--s-${s})`} />
             <text x={p.x - BOX.w / 2 + 24} y={p.y - 3}>

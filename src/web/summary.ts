@@ -35,17 +35,20 @@ export async function refuseFuture(db: Queryable, day: string): Promise<void> {
   if (day > today) throw new BadRequest(`day ${day} is in the future; the simulated clock is on ${today}`);
 }
 
-// Each contact created before $1 gets the `to` of its last status_changed event before $1, or 'new' (D57).
-// One DISTINCT ON pass over events, not a subquery per contact.
+// The status rebuild (D57), shared with stage.ts: each contact's last status_changed event before $1, one DISTINCT ON
+// pass over events, not a subquery per contact. Join it as `last` to contacts `c` with created_at < $1; the
+// contact's status at $1 is then LAST_STATUS: that event's `to`, or 'new' when there is none.
+export const LAST_CHANGE_SQL = `
+  SELECT DISTINCT ON (contact_id) contact_id, occurred_at, data
+    FROM events
+   WHERE type = 'status_changed' AND occurred_at < $1
+   ORDER BY contact_id, occurred_at DESC, id DESC`;
+export const LAST_STATUS = `COALESCE(last.data->>'to', 'new')`;
+
 const STATUS_SQL = `
-  SELECT COALESCE(last.status, 'new') AS status, count(*)::int AS n
+  SELECT ${LAST_STATUS} AS status, count(*)::int AS n
     FROM contacts c
-    LEFT JOIN (
-      SELECT DISTINCT ON (contact_id) contact_id, data->>'to' AS status
-        FROM events
-       WHERE type = 'status_changed' AND occurred_at < $1
-       ORDER BY contact_id, occurred_at DESC, id DESC
-    ) last ON last.contact_id = c.id
+    LEFT JOIN (${LAST_CHANGE_SQL}) last ON last.contact_id = c.id
    WHERE c.created_at < $1
    GROUP BY 1`;
 

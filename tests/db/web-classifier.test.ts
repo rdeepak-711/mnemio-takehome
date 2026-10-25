@@ -125,7 +125,7 @@ describe('classifierStats (D60)', () => {
     await pool.query(
       `INSERT INTO replies (contact_id, send_id, body, received_at, true_label, label, label_source, classified_at)
        SELECT contact_id, send_id, 'extra ' || n, received_at, 'interested', 'interested', 'ai',
-              '2026-11-06T0' || n || ':00:00Z'
+              ('2026-11-06T0' || n || ':00:00Z')::timestamptz
          FROM replies, generate_series(1, 3) AS n WHERE id = $1`,
       [ids.r4],
     );

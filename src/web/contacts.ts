@@ -51,10 +51,15 @@ export type ContactDetail = {
 // The largest value a Postgres int (contacts.id) holds; a bigger id cannot exist.
 const MAX_ID = 2_147_483_647;
 
-// $1 = the ILIKE pattern or NULL, $2 = the status or NULL. `\` escapes % and _ in the pattern.
+// The contact search on contacts `c`, shared with activity.ts: `p` is the parameter holding searchPattern()'s
+// result or NULL (no search). `\` escapes % and _ in the pattern.
+export const searchSql = (p: string) => `
+  (${p}::text IS NULL OR (c.first_name || ' ' || c.last_name) ILIKE ${p} ESCAPE '\\'
+                     OR c.email ILIKE ${p} ESCAPE '\\' OR c.company ILIKE ${p} ESCAPE '\\')`;
+
+// $1 = the ILIKE pattern or NULL, $2 = the status or NULL.
 const WHERE = `
-  WHERE ($1::text IS NULL OR (c.first_name || ' ' || c.last_name) ILIKE $1 ESCAPE '\\'
-                          OR c.email ILIKE $1 ESCAPE '\\' OR c.company ILIKE $1 ESCAPE '\\')
+  WHERE ${searchSql('$1')}
     AND ($2::text IS NULL OR c.status = $2)`;
 
 const COLUMNS = `c.id, c.first_name || ' ' || c.last_name AS name, c.email, c.company, c.status,
@@ -75,7 +80,7 @@ const PAGE_SQL = `
 const COUNT_SQL = `SELECT count(*)::int AS n FROM contacts c ${WHERE}`;
 
 // Turns a search into a case-insensitive substring pattern with %, _ and \ taken literally.
-function pattern(q: string | null | undefined): string | null {
+export function searchPattern(q: string | null | undefined): string | null {
   const trimmed = q?.trim() ?? '';
   return trimmed === '' ? null : `%${trimmed.replace(/[\\%_]/g, '\\$&')}%`;
 }
@@ -90,7 +95,7 @@ export async function listContacts(
   if (status !== null && !(STATUSES as readonly string[]).includes(status)) {
     throw new BadRequest(`status: expected one of ${STATUSES.join(', ')}, got "${status}"`);
   }
-  const q = pattern(opts.q);
+  const q = searchPattern(opts.q);
 
   const [count, rows] = await Promise.all([
     db.query<{ n: number }>(COUNT_SQL, [q, status]),

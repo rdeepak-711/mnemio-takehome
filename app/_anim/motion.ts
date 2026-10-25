@@ -64,22 +64,23 @@ export function useBarGrowth(ref: RefObject<HTMLElement | null>, fraction: numbe
   }, [ref, fraction]);
 }
 
-// Staggered entrance of the children matching `selector`, once, when the container mounts.
-export function useEntrance(ref: RefObject<HTMLElement | null>, selector: string): void {
+// Staggered entrance of the children matching `selector` when the container mounts, and again whenever `key`
+// changes (new rows of a feed). The whole stagger stays under 600 ms however many items there are.
+export function useEntrance(ref: RefObject<HTMLElement | null>, selector: string, key?: unknown): void {
   useEffect(() => {
     const items = ref.current?.querySelectorAll<HTMLElement>(selector);
     if (!items || items.length === 0 || prefersReducedMotion()) return;
     const anim = animate(items, {
       opacity: [0, 1],
       translateY: [8, 0],
-      delay: stagger(45),
+      delay: stagger(Math.min(45, 600 / items.length)),
       duration: 380,
       ease: 'outQuad',
     });
     return () => {
       anim.complete(true);
     };
-  }, [ref, selector]);
+  }, [ref, selector, key]);
 }
 
 // A short fade when `key` changes (a new day on the slider), so the change is visible without hiding data.

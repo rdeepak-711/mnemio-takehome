@@ -3,10 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+// The six sections of the brief, in its order.
 const LINKS = [
   { href: '/', label: 'Overview' },
-  { href: '/journey', label: 'Journey' },
+  { href: '/timeline', label: 'Campaign Timeline' },
+  { href: '/journey', label: 'Contact Journeys' },
+  { href: '/classifier', label: 'AI Classifier' },
   { href: '/contacts', label: 'Contacts' },
+  { href: '/activity', label: 'Activity Log' },
 ];
 
 export function Nav() {

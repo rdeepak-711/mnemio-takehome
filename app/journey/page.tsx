@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Status } from '../../src/lifecycle';
 import type { Move } from '../../src/web/journey';
 import type { CampaignDays, Summary } from '../../src/web/summary';
 import { STATUS_LABEL, fmtInt } from '../_components/api';
 import { DaySlider } from '../_components/DaySlider';
 import { JourneyMap } from '../_components/JourneyMap';
 import { useSim } from '../_components/sim';
+import { StagePanel } from '../_components/StagePanel';
 import { StatusBadge } from '../_components/StatusBadge';
 import { Empty, Failed, Loading } from '../_components/states';
 import { useApi } from '../_components/useApi';
@@ -43,12 +45,17 @@ export default function JourneyPage() {
   const shownDay = day ?? journey.data?.day ?? summary.data?.summary.day ?? null;
   const total = summary.data?.summary.total ?? null;
 
+  // A stage box opens who was in it at the end of the shown day (D62); the panel keeps that day.
+  const [stage, setStage] = useState<{ day: string; status: Status } | null>(null);
+  const closeStage = useCallback(() => setStage(null), []);
+  const stagesDay = journey.data?.day ?? null;
+
   return (
     <>
       <h1>Contact journey</h1>
       <p className="lede">
         Each arrow is a group of contacts whose status changed on the selected day, read from the event log. Stage sizes
-        are as of the end of that day.
+        are as of the end of that day; select a stage to see who was in it and why.
       </p>
       {days && shownDay && <DaySlider days={days} day={shownDay} onChange={setDay} />}
       <div className="grid-2">
@@ -63,6 +70,7 @@ export default function JourneyPage() {
                   moves={journey.data.moves}
                   counts={summary.data?.summary.statuses ?? null}
                   playKey={playKey}
+                  onSelect={stagesDay ? (status) => setStage({ day: stagesDay, status }) : undefined}
                 />
               </div>
             )
@@ -101,6 +109,7 @@ export default function JourneyPage() {
           {summary.error ? <Failed error={summary.error} /> : null}
         </section>
       </div>
+      {stage && <StagePanel day={stage.day} status={stage.status} onClose={closeStage} />}
     </>
   );
 }
