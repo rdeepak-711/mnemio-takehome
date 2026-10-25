@@ -106,3 +106,11 @@ Same probe database after 60 days, no key, cache only. Reply rate 28.8% (2,769 o
 - **Warm-up shapes the campaign more than the windows do.** Engine sends per UTC day were 1,000 (2 Nov, exactly 50 mailboxes × 20), 1,500, 2,000, 1,951 and 1,193 by 09:00 on 6 Nov. On 2 Nov all 1,000 went out at 10:00 and 14:00 UTC, the first in-window hours with due contacts after the mailboxes were created at 10:00. Each follow-up then comes due at the same hour as the email before it, so later days repeat that rhythm (5 Nov: hours 0, 1, 9, 10, 14, 15, 17, 22). Because the daily allowance resets at 00:00 UTC, regions whose windows open earlier in the UTC day get first call on it while mailboxes are warming up. With 1,000 a day on day 1 against a seed with far more contacts due, the 10k run will take longer than before T22; T23 measures it.
 - Mailboxes 01–10 were full (60/60) while 41–50 had sent nothing on 6 Nov: an unassigned contact goes to the lowest-numbered mailbox with room (D66), and contacts keep their mailbox. Correct by the rules, uneven to look at.
 
+
+## Hourly pacing on the 10k run — 2026-10-25 (T22c)
+
+- `npm test` 1,141/1,141, typecheck and format clean (builder, then re-run by the harness).
+- Full run on a scratch database (`npm run full-run`, 10k seed, deliverability and pacing on, no OpenRouter key): total 103.9 s (reset 0.1, seed 0.7, advance 102.7, check 0.3), 43 simulated days, finished, invariants 1–13 ok.
+- Final counts are the same as the unpaced run earlier the same day: replied 1,965, bounced 454, unsubscribed 442, deactivated 7,139; 35,212 sends: 26,562 written by the engine and 8,650 by the seed as history before the 2 Nov start (no mailbox). Outcomes are decided per contact by the seeded mock, so pacing changes when an email goes out, not what happens to it.
+- Busiest (mailbox, UTC hour): 10 emails with pacing, 80 without. Engine sends fell in 286 distinct UTC hours with pacing, 214 without.
+- The unpaced run took 168.5 s on the same machine. This note doesn't explain the difference; it is one run each, not a benchmark.

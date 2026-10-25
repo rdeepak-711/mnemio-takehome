@@ -31,6 +31,7 @@ function config(overrides: Record<string, string> = {}): Config {
     WARMUP_MAX: '50',
     SEND_WINDOW: '0-24',
     DOMAIN_DAILY_CAP: '1000',
+    SEND_PACING: 'off', // T22 behaviour; pacing (D72) has its own tests
     ...overrides,
   });
 }

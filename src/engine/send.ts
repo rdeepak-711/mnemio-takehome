@@ -270,7 +270,7 @@ async function sendWithDelivery(
 ): Promise<SendSummary> {
   await ensureMailboxes(pool, now, delivery.mailboxCount);
   const summary: SendSummary = { sent: 0, bounced: 0, suppressed: 0, batches: 0 };
-  const tried: number[] = []; // mailboxes that are full today or found nothing to claim, in this call
+  const tried: number[] = []; // mailboxes that are full today (or this hour, D72) or found nothing to claim, in this call
   const skip: number[] = []; // contacts held back by the domain gate, in this call
   const client = await pool.connect();
   let broken: Error | undefined;
@@ -284,7 +284,7 @@ async function sendWithDelivery(
           return summary;
         }
         if (mailbox.pausedUntil && mailbox.pausedUntil <= now) await resumeMailbox(client, mailbox.id);
-        const capacity = await mailboxCapacity(client, mailbox.id, now, delivery.warmup);
+        const capacity = await mailboxCapacity(client, mailbox.id, now, delivery);
         const claimed =
           capacity > 0
             ? await claimDue(client, now, Math.min(deps.config.sendBatchSize, capacity), {

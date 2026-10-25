@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Delivery } from '../config';
 
-// Pure deliverability rules (D66–D70). No database, no real clock.
+// Pure deliverability rules (D66–D70, D72). No database, no real clock.
 
 export const PAUSE_SAMPLE = 100; // the last N sends since the warm-up (re)started (D67)
 export const PAUSE_MIN_SENDS = 50; // a smaller sample never pauses (D67)
@@ -13,6 +13,11 @@ export function warmupLimit(ageDays: number, warmup: Delivery['warmup']): number
   if (!Number.isInteger(ageDays)) throw new Error(`ageDays: expected an integer, got ${ageDays}`);
   if (ageDays < 0) return 0;
   return Math.min(warmup.max, warmup.start + warmup.step * ageDays);
+}
+
+// A mailbox's most sends in one UTC hour: its daily limit spread over the window's hours, rounded up (D72).
+export function hourlyLimit(daily: number, window: Delivery['sendWindow']): number {
+  return Math.ceil(daily / (window.endHour - window.startHour));
 }
 
 const WEEKDAYS = new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);

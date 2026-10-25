@@ -35,6 +35,7 @@ describe('loadConfig defaults', () => {
         pauseDays: 3,
         sendWindow: { startHour: 9, endHour: 17 },
         domainDailyCap: 10,
+        pacing: true,
       },
     });
   });
@@ -178,6 +179,7 @@ describe('DELIVERABILITY and its settings', () => {
       PAUSE_DAYS: '1',
       SEND_WINDOW: ' 0 - 24 ',
       DOMAIN_DAILY_CAP: '1',
+      SEND_PACING: ' OFF ',
     }).delivery;
     expect(delivery).toEqual({
       mailboxCount: 3,
@@ -186,7 +188,12 @@ describe('DELIVERABILITY and its settings', () => {
       pauseDays: 1,
       sendWindow: { startHour: 0, endHour: 24 },
       domainDailyCap: 1,
+      pacing: false,
     });
+  });
+
+  it.each(['yes', '1', 'paced'])('SEND_PACING=%j throws naming SEND_PACING', (value) => {
+    expect(() => loadConfig({ ...base, SEND_PACING: value })).toThrow(/SEND_PACING/);
   });
 
   it.each([

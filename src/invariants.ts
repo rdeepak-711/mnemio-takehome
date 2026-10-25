@@ -152,19 +152,11 @@ const CHECKS: readonly { invariant: number; sql: string }[] = [
 // UTC day of a timestamptz expression.
 const utcDay = (t: string) => `(${t} AT TIME ZONE 'UTC')::date`;
 
-// T22, run only with deliverability on (spec/site.md, Layer 7). "Engine send" = sends.mailbox_id IS NOT NULL.
-// $1 is the limit; each check's own parameters follow from $2.
-const DELIVERY_CHECKS: readonly { invariant: number; sql: string; params: (d: Delivery, seed: number) => unknown[] }[] =
-  [
-    {
-      // Warm-up limit per (mailbox, UTC day). The effective start is the creation, or the latest pause's resume on
-      // or before that day, since a pause restarts the warm-up (D67). $2 max, $3 start, $4 step.
-      invariant: 8,
-      sql: `
-        WITH d AS (
-          SELECT mailbox_id, ${utcDay('sent_at')} AS day, count(*)::int AS n
-            FROM sends WHERE mailbox_id IS NOT NULL GROUP BY 1, 2
-        ), a AS (
+// The CTEs d, a and l: `counts` gives d its rows, at least mailbox_id, day (a UTC date) and n, and l adds each
+// row's warm-up age and its limit `lim` on that day. The effective start is the creation, or the latest pause's
+// resume on or before that day, since a pause restarts the warm-up (D67). $2 max, $3 start, $4 step.
+const withWarmupLimit = (counts: string) => `
+        WITH d AS (${counts}), a AS (
           SELECT d.*, m.address,
                  d.day - GREATEST(${utcDay('m.created_at')},
                    (SELECT max(${utcDay('p.resume_at')}) FROM mailbox_pauses p
@@ -172,7 +164,18 @@ const DELIVERY_CHECKS: readonly { invariant: number; sql: string; params: (d: De
             FROM d JOIN mailboxes m ON m.id = d.mailbox_id
         ), l AS (
           SELECT a.*, CASE WHEN age < 0 THEN 0 ELSE LEAST($2::int, $3::int + $4::int * age) END AS lim FROM a
-        )
+        )`;
+
+// T22, run only with deliverability on (spec/site.md, Layer 7). "Engine send" = sends.mailbox_id IS NOT NULL.
+// $1 is the limit; each check's own parameters follow from $2.
+const DELIVERY_CHECKS: readonly { invariant: number; sql: string; params: (d: Delivery, seed: number) => unknown[] }[] =
+  [
+    {
+      // Warm-up limit per (mailbox, UTC day), from withWarmupLimit.
+      invariant: 8,
+      sql: `
+        ${withWarmupLimit(`SELECT mailbox_id, ${utcDay('sent_at')} AS day, count(*)::int AS n
+                             FROM sends WHERE mailbox_id IS NOT NULL GROUP BY 1, 2`)}
         SELECT NULL::int AS contact_id,
                format('mailbox %s sent %s on %s, above its warm-up limit of %s (day %s of the warm-up)',
                       address, n, day, lim, age) AS message
@@ -253,8 +256,29 @@ const DELIVERY_CHECKS: readonly { invariant: number; sql: string; params: (d: De
     },
   ];
 
+// T22c, run only with deliverability and pacing on (D72), after 8–12. Same parameter convention.
+const PACING_CHECKS: typeof DELIVERY_CHECKS = [
+  {
+    // Hourly share per (mailbox, UTC hour): ceil(lim ÷ window hours), lim as in 8 on that hour's UTC day (D72).
+    // $2 max, $3 start, $4 step, $5 the window's hours.
+    invariant: 13,
+    sql: `
+        ${withWarmupLimit(`SELECT mailbox_id, hour, hour::date AS day, n
+                             FROM (SELECT mailbox_id, date_trunc('hour', sent_at AT TIME ZONE 'UTC') AS hour,
+                                          count(*)::int AS n
+                                     FROM sends WHERE mailbox_id IS NOT NULL GROUP BY 1, 2) h`)}
+        SELECT NULL::int AS contact_id,
+               format('mailbox %s sent %s in the hour from %s UTC, above its hourly share of %s (warm-up limit %s)',
+                      address, n, hour, share, lim) AS message
+          FROM (SELECT l.*, ceil(lim::numeric / $5::int)::int AS share FROM l) x
+         WHERE n > share
+         ORDER BY mailbox_id, hour LIMIT $1`,
+    params: (d) => [d.warmup.max, d.warmup.start, d.warmup.step, d.sendWindow.endHour - d.sendWindow.startHour],
+  },
+];
+
 // [] means consistent. Returns at most `limit` violations, lowest invariant number first.
-// With config.delivery set, 8–12 run after 1–7, within the same limit.
+// With config.delivery set, 8–12 run after 1–7, and 13 after them when pacing is on, within the same limit.
 export async function checkInvariants(
   db: Queryable,
   limit = 50,
@@ -264,6 +288,9 @@ export async function checkInvariants(
   const checks = [
     ...CHECKS.map((c) => ({ ...c, params: [] as unknown[] })),
     ...(delivery ? DELIVERY_CHECKS.map((c) => ({ ...c, params: c.params(delivery, config.seed) })) : []),
+    ...(delivery && delivery.pacing
+      ? PACING_CHECKS.map((c) => ({ ...c, params: c.params(delivery, config.seed) }))
+      : []),
   ];
   const violations: Violation[] = [];
   for (const { invariant, sql, params } of checks) {

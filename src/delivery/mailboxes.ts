@@ -2,9 +2,9 @@ import type pg from 'pg';
 import type { Queryable } from '../clock';
 import type { Delivery } from '../config';
 import { dueSql, windowSql } from '../engine/claim';
-import { mailboxAddress, PAUSE_SAMPLE, shouldPause, warmupLimit } from './rules';
+import { hourlyLimit, mailboxAddress, PAUSE_SAMPLE, shouldPause, warmupLimit } from './rules';
 
-// The per-mailbox and per-domain SQL of the deliverability send path (D66, D67, D69).
+// The per-mailbox and per-domain SQL of the deliverability send path (D66, D67, D69, D72).
 // Every function but ensureMailboxes runs on the caller's client, inside its batch transaction.
 
 export type LockedMailbox = { id: number; address: string; warmupStartedAt: Date; pausedUntil: Date | null };
@@ -13,6 +13,9 @@ export type LockedMailbox = { id: number; address: string; warmupStartedAt: Date
 const dayStart = (now: string) => `(date_trunc('day', ${now}::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`;
 // sent_at on now's UTC day, written as a range so the (…, sent_at) indexes apply.
 const onDayOf = (now: string) => `sent_at >= ${dayStart(now)} AND sent_at < ${dayStart(now)} + interval '1 day'`;
+// The same for now's UTC hour (D72).
+const hourStart = (now: string) => `(date_trunc('hour', ${now}::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`;
+const inHourOf = (now: string) => `sent_at >= ${hourStart(now)} AND sent_at < ${hourStart(now)} + interval '1 hour'`;
 
 // Creates mailboxes 1..count on the first call, with the warm-up starting now; later calls change nothing (D66).
 export async function ensureMailboxes(db: Queryable, now: Date, count: number): Promise<void> {
@@ -66,22 +69,27 @@ export async function resumeMailbox(client: pg.PoolClient, id: number): Promise<
 }
 
 // What the mailbox may still send on now's UTC day: its warm-up limit minus its sends today, bounces included.
+// With pacing on, also at most what is left of its hourly share in now's UTC hour (D72).
 // Exact because the caller holds the mailbox row, so no one else sends from it meanwhile.
 export async function mailboxCapacity(
   client: pg.PoolClient,
   id: number,
   now: Date,
-  warmup: Delivery['warmup'],
+  delivery: Pick<Delivery, 'warmup' | 'sendWindow' | 'pacing'>,
 ): Promise<number> {
-  const { rows } = await client.query<{ age: number; sent: number }>(
+  const { rows } = await client.query<{ age: number; sent: number; sentThisHour: number }>(
     `SELECT (($2::timestamptz AT TIME ZONE 'UTC')::date - (m.warmup_started_at AT TIME ZONE 'UTC')::date)::int AS age,
-            (SELECT count(*) FROM sends WHERE mailbox_id = m.id AND ${onDayOf('$2')})::int AS sent
+            (SELECT count(*) FROM sends WHERE mailbox_id = m.id AND ${onDayOf('$2')})::int AS sent,
+            (SELECT count(*) FROM sends WHERE mailbox_id = m.id AND ${inHourOf('$2')})::int AS "sentThisHour"
        FROM mailboxes m WHERE m.id = $1`,
     [id, now],
   );
   const row = rows[0];
   if (!row) throw new Error(`mailbox ${id} not found`);
-  return warmupLimit(row.age, warmup) - row.sent;
+  const daily = warmupLimit(row.age, delivery.warmup);
+  const leftToday = daily - row.sent;
+  if (!delivery.pacing) return leftToday;
+  return Math.min(leftToday, hourlyLimit(daily, delivery.sendWindow) - row.sentThisHour);
 }
 
 // The domain gate (D69). A non-blocking lock, so two batches can never deadlock over domains; while it is held
