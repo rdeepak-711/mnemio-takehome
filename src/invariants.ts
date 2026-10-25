@@ -1,4 +1,7 @@
 import type { Queryable } from './clock';
+import type { Config, Delivery } from './config';
+import { UNSUBSCRIBE_BASE_URL, UNSUBSCRIBE_MAILTO, unsubscribeHeaders } from './delivery/rules';
+import { windowSql } from './engine/claim';
 
 export type Violation = { invariant: number; contactId: number | null; message: string };
 
@@ -146,13 +149,127 @@ const CHECKS: readonly { invariant: number; sql: string }[] = [
   },
 ];
 
+// UTC day of a timestamptz expression.
+const utcDay = (t: string) => `(${t} AT TIME ZONE 'UTC')::date`;
+
+// T22, run only with deliverability on (spec/site.md, Layer 7). "Engine send" = sends.mailbox_id IS NOT NULL.
+// $1 is the limit; each check's own parameters follow from $2.
+const DELIVERY_CHECKS: readonly { invariant: number; sql: string; params: (d: Delivery, seed: number) => unknown[] }[] =
+  [
+    {
+      // Warm-up limit per (mailbox, UTC day). The effective start is the creation, or the latest pause's resume on
+      // or before that day, since a pause restarts the warm-up (D67). $2 max, $3 start, $4 step.
+      invariant: 8,
+      sql: `
+        WITH d AS (
+          SELECT mailbox_id, ${utcDay('sent_at')} AS day, count(*)::int AS n
+            FROM sends WHERE mailbox_id IS NOT NULL GROUP BY 1, 2
+        ), a AS (
+          SELECT d.*, m.address,
+                 d.day - GREATEST(${utcDay('m.created_at')},
+                   (SELECT max(${utcDay('p.resume_at')}) FROM mailbox_pauses p
+                     WHERE p.mailbox_id = d.mailbox_id AND ${utcDay('p.resume_at')} <= d.day)) AS age
+            FROM d JOIN mailboxes m ON m.id = d.mailbox_id
+        ), l AS (
+          SELECT a.*, CASE WHEN age < 0 THEN 0 ELSE LEAST($2::int, $3::int + $4::int * age) END AS lim FROM a
+        )
+        SELECT NULL::int AS contact_id,
+               format('mailbox %s sent %s on %s, above its warm-up limit of %s (day %s of the warm-up)',
+                      address, n, day, lim, age) AS message
+          FROM l WHERE n > lim
+         ORDER BY mailbox_id, day LIMIT $1`,
+      params: (d) => [d.warmup.max, d.warmup.start, d.warmup.step],
+    },
+    {
+      // $2 the cap.
+      invariant: 9,
+      sql: `
+        SELECT NULL::int AS contact_id,
+               format('domain %s got %s engine sends on %s, above the cap of %s', recipient_domain, n, day, $2::int)
+                 AS message
+          FROM (SELECT recipient_domain, ${utcDay('sent_at')} AS day, count(*)::int AS n
+                  FROM sends WHERE mailbox_id IS NOT NULL GROUP BY 1, 2) x
+         WHERE n > $2::int
+         ORDER BY recipient_domain, day LIMIT $1`,
+      params: (d) => [d.domainDailyCap],
+    },
+    {
+      // The claim's own window condition, applied to sent_at (D68). $2 start hour, $3 end hour.
+      invariant: 10,
+      sql: `
+        SELECT s.contact_id,
+               format('send %s at %s is outside the %s-%s window in %s', s.idempotency_key, s.sent_at, $2::int,
+                      $3::int, c.timezone) AS message
+          FROM sends s JOIN contacts c ON c.id = s.contact_id
+         WHERE s.mailbox_id IS NOT NULL AND NOT (${windowSql('s.sent_at', 'c.timezone', '$2::int', '$3::int')})
+         ORDER BY s.contact_id, s.id LIMIT $1`,
+      params: (d) => [d.sendWindow.startHour, d.sendWindow.endHour],
+    },
+    {
+      // Strict on both sides: the sends of the batch that paused share paused_at, and resume_at is the restart.
+      invariant: 11,
+      sql: `
+        SELECT s.contact_id,
+               format('send %s at %s from mailbox %s while it was paused', s.idempotency_key, s.sent_at, s.mailbox_id)
+                 AS message
+          FROM sends s
+         WHERE s.mailbox_id IS NOT NULL
+           AND EXISTS (SELECT 1 FROM mailbox_pauses p
+                        WHERE p.mailbox_id = s.mailbox_id AND p.paused_at < s.sent_at AND s.sent_at < p.resume_at)
+         ORDER BY s.contact_id, s.id LIMIT $1`,
+      params: () => [],
+    },
+    {
+      // The token recomputed in SQL; the rules test pins that it equals unsubscribeToken (D70).
+      // $2 seed, $3 the link base, $4 the mailto address, $5 the List-Unsubscribe-Post value.
+      invariant: 12,
+      sql: `
+        WITH t AS (
+          SELECT s.id, s.contact_id, s.idempotency_key, s.body, s.headers,
+                 left(encode(sha256(convert_to('unsubscribe:' || $2::text || ':' || s.contact_id, 'UTF8')), 'hex'), 16)
+                   AS token
+            FROM sends s WHERE s.mailbox_id IS NOT NULL
+        ), e AS (
+          SELECT t.*, $3::text || '/' || contact_id || '/' || token AS link FROM t
+        )
+        SELECT contact_id,
+               CASE
+                 WHEN right(body, length(link)) <> link
+                   THEN format('send %s body does not end with its unsubscribe link', idempotency_key)
+                 ELSE format('send %s has missing or wrong List-Unsubscribe headers', idempotency_key)
+               END AS message
+          FROM e
+         WHERE headers->>'List-Unsubscribe' IS DISTINCT FROM
+                 '<mailto:' || $4::text || '?subject=unsubscribe%20' || contact_id || '-' || token || '>, <' || link || '>'
+            OR headers->>'List-Unsubscribe-Post' IS DISTINCT FROM $5::text
+            OR right(body, length(link)) <> link
+         ORDER BY contact_id, id LIMIT $1`,
+      params: (_d, seed) => [
+        String(seed),
+        UNSUBSCRIBE_BASE_URL,
+        UNSUBSCRIBE_MAILTO,
+        unsubscribeHeaders(seed, 0)['List-Unsubscribe-Post'],
+      ],
+    },
+  ];
+
 // [] means consistent. Returns at most `limit` violations, lowest invariant number first.
-export async function checkInvariants(db: Queryable, limit = 50): Promise<Violation[]> {
+// With config.delivery set, 8–12 run after 1–7, within the same limit.
+export async function checkInvariants(
+  db: Queryable,
+  limit = 50,
+  config?: Pick<Config, 'delivery' | 'seed'>,
+): Promise<Violation[]> {
+  const delivery = config?.delivery;
+  const checks = [
+    ...CHECKS.map((c) => ({ ...c, params: [] as unknown[] })),
+    ...(delivery ? DELIVERY_CHECKS.map((c) => ({ ...c, params: c.params(delivery, config.seed) })) : []),
+  ];
   const violations: Violation[] = [];
-  for (const { invariant, sql } of CHECKS) {
+  for (const { invariant, sql, params } of checks) {
     const remaining = limit - violations.length;
     if (remaining <= 0) break;
-    const { rows } = await db.query<Row>(sql, [remaining]);
+    const { rows } = await db.query<Row>(sql, [remaining, ...params]);
     for (const r of rows) violations.push({ invariant, contactId: r.contact_id, message: r.message });
   }
   return violations;

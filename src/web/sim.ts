@@ -34,7 +34,7 @@ export async function simAdvance(
   return withLock(async () => {
     const summaries: TickSummary[] = [];
     await advanceDays(deps, days, (s) => summaries.push(s));
-    return { days: summaries, violations: await checkInvariants(deps.pool) };
+    return { days: summaries, violations: await checkInvariants(deps.pool, 50, deps.config) };
   });
 }
 

@@ -3,7 +3,16 @@ import type { Config } from '../config';
 import { REPLY_LABELS, type ReplyLabel } from '../labels';
 import { REPLY_BANK, RETURN_DATE_TOKEN, draw, formatReturnDate } from './replies';
 
-export type SendInput = { idempotencyKey: string; to: string; subject: string; body: string; now: Date };
+// from and headers come with deliverability on (D66, D70); the mock ignores both.
+export type SendInput = {
+  idempotencyKey: string;
+  to: string;
+  subject: string;
+  body: string;
+  now: Date;
+  from?: string;
+  headers?: Record<string, string>;
+};
 export type SendResult = { outcome: 'accepted' | 'bounced' };
 export type Provider = { send(input: SendInput): Promise<SendResult> };
 

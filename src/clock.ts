@@ -31,3 +31,17 @@ export async function advance(db: Queryable, days: number): Promise<Date> {
   if (!row) throw new Error(NOT_SET);
   return row.now;
 }
+
+// The hourly step of a deliverability day (D65); one UPDATE, like advance.
+export async function advanceHours(db: Queryable, hours: number): Promise<Date> {
+  if (!Number.isInteger(hours) || hours < 1) {
+    throw new Error(`hours: expected an integer >= 1, got ${hours}`);
+  }
+  const { rows } = await db.query<{ now: Date }>(
+    'UPDATE sim_clock SET now = now + make_interval(hours => $1) WHERE id = 1 RETURNING now',
+    [hours],
+  );
+  const row = rows[0];
+  if (!row) throw new Error(NOT_SET);
+  return row.now;
+}

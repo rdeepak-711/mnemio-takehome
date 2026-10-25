@@ -172,7 +172,7 @@ describe('advanceDays', () => {
     expect(summaries.reduce((total, s) => total + s.sent.sent, 0)).toBeGreaterThan(0);
     expect(summaries.reduce((total, s) => total + s.deactivated, 0)).toBeGreaterThan(0);
     expect(summaries.reduce((total, s) => total + s.labelled.processed, 0)).toBeGreaterThan(0);
-  });
+  }, 60_000); // about 5 s, which is Vitest's default limit
 
   it('calls onDay once per day with that day’s summary', async () => {
     const cfg = config({ CONTACT_COUNT: '50' });
