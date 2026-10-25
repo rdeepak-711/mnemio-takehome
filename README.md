@@ -16,7 +16,7 @@ npm install
 cp .env.example .env             # the defaults work; the AI key is only needed from T16 on
 npm run db:reset                 # build the tables (keeps saved AI answers)
 npm run seed                     # 10,000 contacts with history; prints "invariants: ok"
-npm test                         # 797 automated tests
+npm test                         # 812 automated tests
 ```
 
 `npm run seed` takes about 1 second on a MacBook. Running it twice without `db:reset` is refused.
@@ -28,9 +28,26 @@ npm run ai:warm                  # optional, with a key: write the 20 email sequ
 npm run tick                     # one tick at the current simulated time
 npm run advance -- --days 30     # move the clock a day and tick, 30 times; ends with "invariants: ok"
 npm run report                   # where things stand: statuses, rates, template sources, classifier accuracy
+npm run full-run                 # reset (keeps the AI cache) → seed → warm → advance until done → check → report, timed
 ```
 
-On the 10,000-contact seed with no AI key, `advance --days 30` took 63 seconds on a MacBook (measured 23 Oct; T20 times the full run). A step-by-step tour, including clearing the AI cache, is in [`docs/try-it.md`](docs/try-it.md). Coming next: the timed full run (T20) and the dashboard.
+### Measured: the full 10,000-contact run (23 Oct 2026, MacBook, Postgres 17 in Docker)
+
+`npm run full-run` with no OpenRouter key. The AI cache held 1 sequence and 13 reply labels from earlier runs, which were used; everything else fell back to the hand-written emails and to "needs review".
+
+| Phase | Time |
+|---|---|
+| reset | 0.1 s |
+| seed 10,000 contacts | 1.1 s |
+| warm the 20 sequences | 0.0 s (no key) |
+| advance 40 simulated days, until nobody was left in sequence | 54.1 s |
+| check the 7 invariants | 0.1 s (all hold) |
+| report | 0.0 s |
+| **total** | **55.6 s** |
+
+Final state: 1,883 replied, 454 bounced, 503 unsubscribed, 7,160 deactivated, 0 still in sequence. Reply rate 28.8% (2,769 of 9,615 contacts with an accepted send); bounce rate 1.3% (454 of 35,245 sends, seed included). 26,595 emails sent by the engine: 1,339 from the cached AI sequence, 25,256 fallback. Replies: rules labelled 640 (all correct against the mock's true label), cached AI labels 1,454 (1,324 correct, 91.1%), 12 fell back; 142 need review, 0 unlabelled, 0 orphaned. A second run on the same seed gave identical numbers. A run with a key adds the AI's minutes to "warm" (about 28 s per sequence on the free models, once; cached after).
+
+A step-by-step tour, including clearing the AI cache, is in [`docs/try-it.md`](docs/try-it.md). Coming next: the dashboard.
 
 ## Architecture
 
