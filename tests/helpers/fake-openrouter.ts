@@ -2,7 +2,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 // A local stand-in for OpenRouter's /chat/completions: per model, a queue of scripted answers; every request is
-// recorded. An empty queue answers 500.
+// recorded. An empty queue answers 500. `respond`, when set, answers before the queues.
 
 export type Script = { status: number; content?: string; body?: unknown };
 export type Seen = { model: string; body: Record<string, unknown> };
@@ -11,6 +11,8 @@ export type FakeOpenRouter = {
   baseUrl: string;
   seen: Seen[];
   scripts: Record<string, Script[]>;
+  // When set, answers every request first; returning undefined falls through to the scripts.
+  respond?: ((body: Record<string, unknown>) => Script | undefined) | undefined;
   reset(): void;
   close(): Promise<void>;
 };
@@ -33,6 +35,7 @@ export async function startFakeOpenRouter(): Promise<FakeOpenRouter> {
     scripts: {},
     reset() {
       fake.seen.length = 0;
+      fake.respond = undefined;
       for (const key of Object.keys(fake.scripts)) delete fake.scripts[key];
     },
     close: () => new Promise((resolve) => server.close(() => resolve())),
@@ -44,7 +47,7 @@ export async function startFakeOpenRouter(): Promise<FakeOpenRouter> {
       const body = JSON.parse(raw || '{}') as Record<string, unknown>;
       const model = String(body.model);
       fake.seen.push({ model, body });
-      const next = fake.scripts[model]?.shift() ?? failWith(500);
+      const next = fake.respond?.(body) ?? fake.scripts[model]?.shift() ?? failWith(500);
       res.writeHead(next.status, { 'Content-Type': 'application/json' });
       const payload =
         next.content !== undefined
