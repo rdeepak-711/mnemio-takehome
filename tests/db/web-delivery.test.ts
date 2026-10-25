@@ -24,6 +24,7 @@ const cfg = loadConfig({
   WARMUP_MAX: '10',
   SEND_WINDOW: '0-24',
   DOMAIN_DAILY_CAP: '3',
+  SEND_PACING: 'off', // T22 behaviour; pacing (D72) has its own tests
 });
 const delivery = cfg.delivery!;
 const T = (iso: string) => new Date(iso);

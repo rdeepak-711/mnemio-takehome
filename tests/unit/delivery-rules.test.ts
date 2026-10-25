@@ -5,6 +5,7 @@ import {
   PAUSE_SAMPLE,
   UNSUBSCRIBE_BASE_URL,
   UNSUBSCRIBE_MAILTO,
+  hourlyLimit,
   inSendWindow,
   mailboxAddress,
   recipientDomain,
@@ -154,5 +155,18 @@ describe('unsubscribe (D70)', () => {
     expect(withUnsubscribeFooter('Hi Ann,\n\nBye\n\n', link)).toBe(
       `Hi Ann,\n\nBye\n\n--\nNot interested? Unsubscribe here: ${link}`,
     );
+  });
+});
+
+describe('hourlyLimit (D72)', () => {
+  it.each([
+    [80, { startHour: 9, endHour: 17 }, 10],
+    [20, { startHour: 9, endHour: 17 }, 3],
+    [30, { startHour: 9, endHour: 17 }, 4],
+    [50, { startHour: 0, endHour: 24 }, 3],
+    [5, { startHour: 0, endHour: 24 }, 1],
+    [0, { startHour: 9, endHour: 17 }, 0],
+  ])('daily %i in %j → %i an hour', (daily, window, hourly) => {
+    expect(hourlyLimit(daily, window)).toBe(hourly);
   });
 });

@@ -540,3 +540,13 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Why:** the brief asks that "animation must never invent successful sends, replies, or state changes". Every dot is backed by `sends` rows of that hour and lane, the tile numbers are counts, and the strip makes the send windows visible: the wave of sends moves from Asia to Europe to the Americas through the UTC day and stops at weekends.
 
 **Cost:** a dot is a rounded group, so a cell with 1 email and one with the dot size both show one dot; the cell's exact count is in its label and on focus. Capacity is the sum of every mailbox's warm-up limit for the day, including a mailbox that paused partway through it.
+
+## D72 · 2026-10-25 · Each mailbox sends at most its daily limit ÷ the window's hours in any one hour
+
+**Decided:** with deliverability on and `SEND_PACING=on` (the default), a mailbox's capacity for a batch is the smaller of what is left of its daily limit and what is left of its hourly limit, `hourlyLimit(daily, window) = ceil(daily ÷ (endHour − startHour))` (80 a day in a 9–17 window → 10 an hour; 20 → 3). "This hour" is the UTC hour of `now`, counted from that mailbox's `sends` in `[date_trunc('hour', now), +1 hour)`. Invariant 13 checks it after a run. `SEND_PACING=off` keeps T22 behaviour; the T22 test helpers set it off, so those tests keep testing what they were written for, and new tests switch it on.
+
+**Considered:** leaving it (the T22b page showed day 1's 1,000 emails leaving at 10:00 and 14:00 UTC, two bursts, which the brief's bonus asks to avoid: "sends spread across mailboxes and across the working day, not in one burst"); random jitter of send times inside the hour (time would be invented, and replies before sends would need a finer clock); pacing per recipient-local hour (a mailbox serves every timezone, so its pace is a property of the sender, not the recipient).
+
+**Why:** a fixed share per hour is how sending tools pace a mailbox, it is one more count under the mailbox lock D66 already holds, and it also spreads new contacts over more mailboxes, because a mailbox that has used its hour stops taking them.
+
+**Cost:** while mailboxes warm up, fewer emails go out per day when only a few hours have due contacts in window, so the campaign takes more simulated days; the full run is re-measured in T23. With a 0–24 window the hourly share is daily ÷ 24.

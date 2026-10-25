@@ -75,9 +75,10 @@ PAUSE_BOUNCE_RATE=0.10
 PAUSE_DAYS=3
 SEND_WINDOW=9-17
 DOMAIN_DAILY_CAP=10
+SEND_PACING=on
 ```
 
-The last nine are T22 (D64–D70). With `DELIVERABILITY=off` the other eight are still validated but nothing uses them.
+The last ten are T22 (D64–D70, D72). With `DELIVERABILITY=off` the other eight are still validated but nothing uses them.
 
 The system must run end to end with `OPENROUTER_API_KEY` empty: every AI step falls back (hand-written templates, rule-only classification, `needs_review`). An evaluator without a key still gets a working run.
 
@@ -251,6 +252,7 @@ Each task has its own file `tasks/T0x-*.md`, written by the harness engineer wit
 10. Every engine send happened inside the contact's local send window (Mon–Fri, `SEND_WINDOW`).
 11. No engine send from a mailbox after it paused and before it resumed.
 12. Every engine send has the `List-Unsubscribe` and `List-Unsubscribe-Post` headers for its contact, and its body ends with the unsubscribe link.
+13. No mailbox sends more in one UTC hour than `ceil(its limit that day ÷ window hours)`. (D72; only with `SEND_PACING=on`)
 
 **T23 README.** The 7 sections the PDF asks for, measured numbers from T20, and a clean-clone run-through that was actually done.
 
