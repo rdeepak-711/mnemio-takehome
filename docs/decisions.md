@@ -530,3 +530,13 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Why:** the brief asks for the header and the link; recipients in the mock still unsubscribe by replying, which the engine already handles.
 
 **Cost:** the token is derived from `SEED`, which is in `.env.example`, so anyone could forge it; a real system would use an HMAC with a secret key. The footer makes stored bodies up to about 110 characters longer than the 1,200 the content check allows.
+
+## D71 · 2026-10-25 · The deliverability page replays the selected day's real sends hour by hour, one dot for a fixed number of emails
+
+**Decided:** a seventh dashboard section, `/deliverability`, fed by `GET /api/delivery?day=` (`deliveryDay` in `src/web/delivery.ts`). For the selected simulated UTC day it shows: the mailboxes that existed by the end of the day as tiles, each filled by its engine sends that day (bounces included, bounces marked) against its warm-up limit for that day (the rule of invariant 8), and marked paused when a pause covers the end of the day; a 24-hour strip, one column per UTC hour and one lane per recipient region (`regionOf(timezone)`: `America/*` → Americas, `Europe/*` → Europe, `Australia/*` → Australia, anything else → Asia), where the hour's real emails fly as dots from the mailbox bank into their lane, bounced ones turning red and dropping; the top 8 recipient domains against `DOMAIN_DAILY_CAP`; and every pause up to the end of the day, newest first. One dot stands for a fixed number of emails, chosen per day so the busiest cell has at most 12 dots, and the legend says how many. With `DELIVERABILITY=off` the page says so and shows nothing else. The overview gets a small card with the day's emails against capacity and the paused count.
+
+**Considered:** one dot per email (2,000 moving dots a day is noise and slow on a phone); animating mailbox-to-domain lines (500+ domains do not fit on a screen); local-time columns per lane (a lane mixes several timezones, so there is no single local hour to label).
+
+**Why:** the brief asks that "animation must never invent successful sends, replies, or state changes". Every dot is backed by `sends` rows of that hour and lane, the tile numbers are counts, and the strip makes the send windows visible: the wave of sends moves from Asia to Europe to the Americas through the UTC day and stops at weekends.
+
+**Cost:** a dot is a rounded group, so a cell with 1 email and one with the dot size both show one dot; the cell's exact count is in its label and on focus. Capacity is the sum of every mailbox's warm-up limit for the day, including a mailbox that paused partway through it.
