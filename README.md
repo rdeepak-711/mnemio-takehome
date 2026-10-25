@@ -1,172 +1,200 @@
 # Mnemio cold-email engine
 
-> **Status: in progress (23 Oct 2026).** Tasks T01–T13 are built and tested: the project setup, the rulebooks, the database, the simulated clock, the 10,000-contact seed and the mock email provider. The engine that sends emails on a schedule (T12–T18), the AI (T16–T17), the report (T19), the full 10,000-contact run (T20) and the dashboard (T21) are next. This README describes what exists today and is completed in T23.
+## 1. What the system does
 
-## What the system does
+A sales team emails 10,000 prospects: a first email and up to three follow-ups each, a few days apart. This system keeps one record per prospect saying where they are in that sequence and when their next email is due. Each simulated hour it picks up everyone who is due, writes their email, hands it to a mock email provider, records what happened and books the next step. A reply, bounce or unsubscribe ends the sequence; if nobody answers the last follow-up within its wait, the prospect is deactivated. Sending behaves like a careful human sender: 50 warming-up mailboxes, the prospect's working hours, a cap per company domain, a pause for a mailbox that bounces too much, and unsubscribe headers. Emails are never sent for real, time is simulated so six weeks play out in under two minutes, the AI comes from OpenRouter's free models, and a dashboard shows it all as it happens.
 
-A sales team emails 10,000 prospects: a first email and up to three follow-ups each, a few days apart. This system keeps one record per prospect saying where they are in that sequence and when their next email is due. Each run picks up everyone who is due, writes their email, hands it to a mock email provider, records what happened and books the next step. A reply, bounce or unsubscribe ends the sequence; if nobody answers the last follow-up within its wait, the prospect is deactivated. Emails are never sent for real, time is simulated so weeks play out in minutes, and the AI comes from OpenRouter's free models.
-
-## Run it
+## 2. Set up and run
 
 Needs Node 22+ and Docker.
 
 ```bash
 docker compose up -d db          # Postgres 17 on localhost:5433, databases mnemio and mnemio_test
 npm install
-cp .env.example .env             # the defaults work; the AI key is only needed from T16 on
+cp .env.example .env             # the defaults work; add OPENROUTER_API_KEY for the AI (optional)
 npm run db:reset                 # build the tables (keeps saved AI answers)
-npm run seed                     # 10,000 contacts with history; prints "invariants: ok"
-npm test                         # 812 automated tests
+npm run seed                     # 10,000 contacts with history; ends with "invariants: ok"
 ```
 
-`npm run seed` takes about 1 second on a MacBook. Running it twice without `db:reset` is refused.
-
-Run the engine:
+Run the workflow, move time forward, see the report:
 
 ```bash
-npm run ai:warm                  # optional, with a key: write the 20 email sequences once (cached after)
 npm run tick                     # one tick at the current simulated time
-npm run advance -- --days 30     # move the clock a day and tick, 30 times; ends with "invariants: ok"
-npm run report                   # where things stand: statuses, rates, template sources, classifier accuracy
-npm run full-run                 # reset (keeps the AI cache) → seed → warm → advance until done → check → report, timed
+npm run advance -- --days 7      # move the clock a day at a time and tick, 7 times; ends with "invariants: ok"
+npm run report                   # statuses, reply and bounce rates, template sources, classifier accuracy, mailboxes
 ```
 
-### Measured: the full 10,000-contact run (23 Oct 2026, MacBook, Postgres 17 in Docker)
-
-`npm run full-run` with no OpenRouter key. The AI cache held 1 sequence and 13 reply labels from earlier runs, which were used; everything else fell back to the hand-written emails and to "needs review".
-
-| Phase | Time |
-|---|---|
-| reset | 0.1 s |
-| seed 10,000 contacts | 1.1 s |
-| warm the 20 sequences | 0.0 s (no key) |
-| advance 40 simulated days, until nobody was left in sequence | 54.1 s |
-| check the 7 invariants | 0.1 s (all hold) |
-| report | 0.0 s |
-| **total** | **55.6 s** |
-
-Final state: 1,883 replied, 454 bounced, 503 unsubscribed, 7,160 deactivated, 0 still in sequence. Reply rate 28.8% (2,769 of 9,615 contacts with an accepted send); bounce rate 1.3% (454 of 35,245 sends, seed included). 26,595 emails sent by the engine: 1,339 from the cached AI sequence, 25,256 fallback. Replies: rules labelled 640 (all correct against the mock's true label), cached AI labels 1,454 (1,324 correct, 91.1%), 12 fell back; 142 need review, 0 unlabelled, 0 orphaned. A second run on the same seed gave identical numbers. A run with a key adds the AI's minutes to "warm" (about 28 s per sequence on the free models, once; cached after).
-
-A step-by-step tour, including clearing the AI cache, is in [`docs/try-it.md`](docs/try-it.md).
-
-### Dashboard
-
-A browser view onto the same database (T21a and T21b, `spec/dashboard.md`). It reads `DATABASE_URL` from `.env` like the CLI, so seed first.
+Or the whole campaign in one command, timed:
 
 ```bash
-npm run dev                      # http://localhost:3000, reloads on change
+npm run full-run                 # reset (keeps the AI cache) → seed → write AI sequences → advance until nobody is left → check → report
+```
+
+The dashboard reads the same database:
+
+```bash
+npm run dev                      # http://localhost:3000
 npm run build && npm start       # or the production build, same port
 ```
 
-Six sections, in the sidebar: **Overview** (`/`: KPIs, a day slider with the funnel as of that day, the daily activity chart, an AI classifier card and the selected day's first 8 events), **Campaign Timeline** (`/timeline`: the chart full width and one row per day, filterable to simulated days or seeded history), **Contact Journeys** (`/journey`: the nine stages and who moved between them on a day), **AI Classifier** (`/classifier`: labels since `SIM_START` per predicted label and per source, rule and AI accuracy against the mock's hidden label, the confusion table and example replies, the same numbers as `npm run report`, D60), **Contacts** (`/contacts`: 50 per page, search, status filter, a detail panel with every send, reply and event; `?q=` and `?status=` in the URL set the filters) and **Activity Log** (`/activity`: every send, bounce, reply, reschedule and deactivation, newest first, filtered by kind, contact and day in the URL, D61). Every number is rebuilt from the database for the end of the selected simulated UTC day (D57); days before `SIM_START` are marked "seeded history". Clicking a funnel bar or a journey stage lists who was in that stage at the end of that day, with when, from where and why they got there (D62). The header buttons advance the clock 1 or 7 days, or reset (`db:reset` keeping the AI cache, then `seed`), through the same engine functions as the CLI, one at a time (D58); the request stays open until every day has run, and in the CLI runs on 10,000 contacts with no AI key each simulated day took 0.3–2.0 seconds, so "advance 7 days" can take up to about 15 seconds (more with an AI key). **Play** advances one day per request with a pause of 1.5 s, 0.6 s or 0.15 s between days (1×, 2×, 4×) and stops by itself on an error, an invariant violation, or when nobody is left in the sequence; Pause stops after the day in progress, and closing the tab stops it (D63). With an AI key, playing spends the daily AI budget like `npm run advance`. There is no login, so run it on your own machine only.
+Checks: `npm test` (1,141 tests against a real Postgres, about 80 s), `npm run typecheck`, `npm run format:check`. A step-by-step tour, including clearing the AI cache, is in [`docs/try-it.md`](docs/try-it.md).
 
-## Architecture
+Every setting is in `.env.example`. The ones you're most likely to change: `CONTACT_COUNT`, `SEED`, `WAIT_DAYS=3,5,7,7`, `BOUNCE_RATE`, `REPLY_RATE`, `DAILY_AI_BUDGET`, and `DELIVERABILITY=on|off` (off sends one tick per day with no mailboxes, windows or caps).
 
-TypeScript on Node, Postgres as both the database and the work queue, plain SQL with no ORM, Vitest against a real Postgres. Reasons, alternatives and costs for every choice are in [`docs/decisions.md`](docs/decisions.md).
+## 3. Architecture, data model and why these tools
 
-| Layer | Tasks | What it is | Status |
-|---|---|---|---|
-| 0 Skeleton | T01 | Project, Docker Postgres, test runner, connection pool | built |
-| 1 Pure rules | T02–T07 | Settings check, lifecycle rulebook, schedule, templates, segments, reply rules | built |
-| 2 Data | T08–T11 | Tables, simulated clock, seed + consistency checker, mock provider | built |
-| 3 Engine | T12–T15 | Claim due contacts, send, process replies, deactivate | T12–T13 built, T14–T15 next |
-| 4 AI | T16–T17 | OpenRouter client, sequence writer, reply classifier | planned |
-| 5 Whole system | T18–T20 | Tick + advance, report, timed 10,000-contact run | planned |
-| 6 Dashboard | T21–T22 | Funnel with day slider, contact timelines; mailbox warm-up bonus | planned |
+```
+src/main.ts (CLI)  ─┐                     ┌─ src/engine/replies.ts     deliver mock replies, label them (rules → AI → needs_review)
+app/ (dashboard)   ─┼─► src/engine/tick.ts ┼─ src/engine/deactivate.ts  close contacts silent past the last wait
+                    │   one tick per       └─ src/engine/send.ts        claim due contacts, write, send, record, book next step
+                    │   simulated hour            │
+                    │                             ├─ src/delivery/       mailboxes, warm-up, pacing, windows, domain caps, pauses
+                    │                             ├─ src/templates/      AI sequence or hand-written fallback, content checks
+                    │                             └─ src/mock/provider.ts the "email service", on its own DB connection
+                    └─► src/web/ (read-only SQL for the dashboard)        src/ai/ OpenRouter client, cache, budget
+                                         all on Postgres
+```
 
-### Data model
+- **Postgres is both the database and the work queue.** A contact's `next_action_at` is its place in the queue; workers claim due contacts with `FOR UPDATE SKIP LOCKED`. One system to run, and a send, its record and the status change commit together in one transaction. A separate queue (Redis, SQS) would add a second system whose state can disagree with the database.
+- **TypeScript (strict) on Node, plain SQL through `pg`, no ORM.** The interesting logic is in the SQL (claims, locks, invariants); an ORM would hide it.
+- **Pure rules, tested without a database:** `src/lifecycle.ts` (`transition()` is the only place a status changes), `src/schedule.ts`, `src/templates/`, `src/delivery/rules.ts`, `src/classify/`.
+- **A simulated clock** (`sim_clock`, `src/clock.ts`): nothing in `src/` reads the real time, so a run is repeatable and fast.
+- **Vitest against a real Postgres** (`mnemio_test`), because the guarantees that matter (locks, unique keys, crash recovery) only exist in the database.
+- **Next.js 16 + React 19** for the dashboard, with Anime.js for the animations. The routes only parse and call `src/web/`; there is no SQL in `app/`.
+
+Every choice, with what else was considered and what it costs, is in [`docs/decisions.md`](docs/decisions.md) (D01–D72).
 
 | Table | Holds |
 |---|---|
-| `contacts` | Each prospect: details, segment, `status`, `next_action` and `next_action_at` |
-| `sends` | Every email sent: contact, step, `idempotency_key`, outcome, when |
-| `replies` | Every reply: the email it answers, text, our label, the mock's true label |
+| `contacts` | Each prospect: details, segment, `status`, `next_action`, `next_action_at`, its mailbox |
+| `sends` | Every email: contact, step, `idempotency_key`, outcome, mailbox, recipient domain, headers, when |
+| `replies` | Every reply: the email it answers, text, our label and its source, the mock's true label |
 | `suppression` | Addresses never to email again (unsubscribed or bounced) |
 | `events` | An append-only diary of everything that happened to each contact |
+| `mailboxes`, `mailbox_pauses` | The 50 sending addresses with their warm-up start, and every auto-pause |
 | `sim_clock` | The simulation's "now", one row |
 | `mock_outbox`, `mock_inbox` | The mock provider's own records: emails received, replies waiting |
-| `ai.llm_cache`, `ai.llm_usage` | AI answers kept for reuse, and AI calls used per real day. They live in their own `ai` schema, which `npm run db:reset` keeps (D52) |
+| `ai.llm_cache`, `ai.llm_usage` | AI answers kept for reuse, and AI calls per real day. In their own schema, which `db:reset` keeps |
 
-The database also refuses impossible records, as a second line of defence behind the code: one row per contact per step (`UNIQUE (contact_id, step)`), a status must match its next action, a segment must equal `role_family:industry`.
+The seed (`npm run seed`, `SEED=42`) gives each contact a random status with the history that status implies: 6,000 `new`, 2,800 part-way through the sequence, and 500 replied, 200 bounced, 200 unsubscribed, 300 deactivated. Each history is produced by walking the contact through the same `transition()` the engine uses. The mock provider (`src/mock/provider.ts`) decides everything from a hash of the seed and the email's key: 3% of addresses bounce, 8% of accepted emails get a reply 12–72 hours later (30% interested, 35% not interested, 20% out of office, 15% unsubscribe), including deliberately ambiguous texts for the AI, and some replies to the last follow-up arrive after the contact was deactivated.
 
-## Lifecycle rules
+## 4. Lifecycle rules and how double sends are stopped
 
-Statuses: `new`, `first_sent`, `follow_up_1_sent`, `follow_up_2_sent`, `follow_up_3_sent` (in sequence) and `replied`, `bounced`, `unsubscribed`, `deactivated` (finished). One function, `transition()` in `src/lifecycle.ts`, decides every change; nothing else changes a status.
+Statuses: `new`, `first_sent`, `follow_up_1_sent`, `follow_up_2_sent`, `follow_up_3_sent` (in sequence) and `replied`, `bounced`, `unsubscribed`, `deactivated` (finished).
 
-- Emails go strictly in order; recording a step out of order is refused.
-- Default waits are 3, 5 and 7 days between emails, and 7 more days after follow-up 3 before deactivation (`WAIT_DAYS=3,5,7,7`).
-- A reply (interested, not interested, or one the classifier isn't sure about) ends the sequence: `replied`.
+- Emails go strictly in order. The waits are 3, 5 and 7 days between emails, then 7 more days after follow-up 3 before deactivation.
+- A reply (interested, not interested, or one the classifier isn't sure of, `needs_review`) ends the sequence: `replied`.
 - A bounce ends it: `bounced`, and the address is suppressed.
 - An unsubscribe ends it from any status: `unsubscribed`, and the address is suppressed.
-- An out-of-office reply only delays the next email, to the day after the stated return date (or 7 days if none), and never brings it forward.
-- A deactivated prospect who replies late becomes `replied` (or `unsubscribed`); a late out-of-office changes nothing.
+- An out-of-office only delays the next email, to the day after the stated return date (or 7 days), never earlier.
+- A deactivated prospect who replies late becomes `replied` (or `unsubscribed`).
+- Each tick handles replies first, then deactivation, then sending, so a same-day reply always stops the next email.
 
-## How double sends are stopped
+Double sends are stopped by four layers:
 
-Four layers, all built:
+1. **Claiming.** Workers claim due contacts with `FOR UPDATE SKIP LOCKED` (`src/engine/claim.ts`), so two workers never hold the same contact.
+2. **One transaction per batch.** A batch's emails, records and status changes commit together (`src/engine/send.ts`); a crash undoes our side completely.
+3. **An idempotency key.** The mock provider remembers every email by `"<contact_id>:<step>"` on its own connection, like a real outside service. A retry after a crash gets the first answer back and nothing new is sent. A test crashes a batch half-way and checks exactly this.
+4. **The database.** `UNIQUE (contact_id, step)` on `sends` refuses a second row, and status, next action and segment must agree.
 
-1. **The mock provider remembers every email by its key** (`"<contact_id>:<step>"`). Sending the same key again returns the first answer and creates nothing new, so a retry after a crash is harmless.
-2. **The provider writes on its own connection**, like a real outside service: if our transaction rolls back, its record of the email survives.
-3. **The database allows one row per contact per step** (`UNIQUE (contact_id, step)` on `sends`).
-4. **Workers claim due contacts with `FOR UPDATE SKIP LOCKED`** (`src/engine/claim.ts`), so two workers never work on the same contact at once; other workers skip locked rows instead of waiting. Each batch's emails, records and status changes are saved as one transaction (`src/engine/send.ts`), so a crash undoes our side completely; the provider remembers what it was handed, so the retry sends nothing twice. A test crashes a batch half-way and checks exactly this.
+After the seed, after every `advance` and at the end of `full-run`, `checkInvariants` (`src/invariants.ts`) checks 13 rules across every row and prints `invariants: ok` or the violations. Examples: one send per contact and step; replaying a contact's status changes ends at its current status; no mailbox above its warm-up limit for the day or its hourly share; no email outside the prospect's 9:00–17:00 weekday window.
 
-## Seed data
+## 5. AI: where, which models, rate limits
 
-`npm run seed` creates 10,000 contacts with a fixed random seed (`SEED=42`), each with a random status and the matching history, as the brief asks: a contact on follow-up 2 has its first email and follow-up 1, spaced by the real waits.
+The free models allow roughly 45 calls a day, so the AI does the work that is per segment or ambiguous, never per email:
 
-| Status | Contacts | History created |
+- **Writing.** One 4-email sequence per segment (20 segments = 4 role families × 5 industries), written once and cached; code fills in each contact's name, company and role. Every template passes a content check (no leftover blanks, length, spam words) or the hand-written fallback is used.
+- **Reading replies.** Plain rules label the clear ones first (an auto-reply header, "unsubscribe", "out of office"). Only the unclear ones go to the AI, 25 per call. If there is no AI, or it fails, a reply becomes `needs_review`, which stops that contact's emails like `not_interested` would.
+
+Models, in order: `recursive/flint-v1.0:free`, `nvidia/nemotron-3.5-lightning:free`, `nvidia/nemotron-3.5-super-vl:free` (`OPENROUTER_MODELS`; how they were picked is in `docs/findings.md`). The client (`src/ai/client.ts`) refuses any model not ending in `:free`.
+
+Rate limits are handled in four ways:
+- Calls are spaced out to `AI_RPM` (20 a minute).
+- Each real day's calls are counted in `ai.llm_usage` against `DAILY_AI_BUDGET` (45), so a restart doesn't reset the count.
+- A busy or failing model is retried twice, then the next model is tried, and a dead model is skipped for 5 minutes.
+- Every answer is cached, so a re-run uses no budget.
+
+When the budget runs out, the system carries on with the fallbacks; it never stops for the AI.
+
+Measured with a key (`docs/findings.md`):
+- Flint wrote a valid four-email sequence in 28 seconds.
+- On the 12 hardest replies in the mock's bank, the AI matched the true label 11 times in one 7.5-second call.
+- Over a 10k run using cached AI labels, 1,324 of 1,454 AI labels (91.1%) were correct.
+
+## 6. Results of the 10,000-contact run
+
+`npm run full-run` on 25 Oct 2026, on a MacBook with Postgres 17 in Docker, with no OpenRouter key and an empty AI cache, so every email used the hand-written fallback and every reply the rules couldn't label went to `needs_review`. Each run was done once, on a fresh scratch database.
+
+| Phase | Deliverability on (default) | `DELIVERABILITY=off` |
 |---|---|---|
-| `new` | 6,000 | none; first emails due in waves of 1,000 a day |
-| `first_sent` … `follow_up_3_sent` | 1,200 / 800 / 500 / 300 | 1–4 past emails; about a third are due on day one |
-| `replied` | 500 | 1–4 emails and an interested or not-interested reply |
-| `bounced` | 200 | one bounced first email, address suppressed |
-| `unsubscribed` | 200 | 1–4 emails and an unsubscribe reply, address suppressed |
-| `deactivated` | 300 | all 4 emails, then deactivated after the last wait |
+| reset | 0.1 s | 0.1 s |
+| seed 10,000 contacts | 0.7 s | 0.7 s |
+| advance until nobody is left in sequence | 102.7 s (43 simulated days, 24 ticks a day) | 44.6 s (40 simulated days, 1 tick a day) |
+| check the invariants | 0.3 s (1–13 hold) | 0.2 s (1–7 hold) |
+| **total** | **103.9 s** | **45.6 s** |
 
-Every history is produced by walking the contact through the same `transition()` the engine uses, and dated before the simulation start. The whole seed is one transaction. Afterwards `checkInvariants` (`src/invariants.ts`) checks seven rules across every row, for example "a bounced contact has a bounced last email and a suppression entry" and "replaying a contact's status changes ends at its current status". The same seed produces identical rows, ids included.
+Final counts, the same in both runs:
 
-## Mock email provider
+| | |
+|---|---|
+| Replied | 1,965 |
+| Bounced | 454 |
+| Unsubscribed | 442 |
+| Deactivated | 7,139 |
+| Still in sequence | 0 |
+| Reply rate | 28.8% (2,769 of 9,615 contacts with an accepted send) |
+| Bounce rate | 1.3% (454 of 35,212 sends) |
+| Emails sent by the engine | 26,562 (all fallback templates, no key) |
+| Replies labelled by the rules | 640, all correct against the mock's true label |
+| Replies to `needs_review` | 1,465 (no key) |
+| Orphaned mock replies, unlabelled replies | 0, 0 |
 
-`src/mock/provider.ts` stands in for a real email service. Every decision comes from a hash of the seed and the email's key (or address), not from a shared random generator, so results don't depend on which worker sends first.
+The 35,212 sends include 8,650 from the seed's history. The counts match because the mock decides each outcome from the seed and the email's key, so deliverability changes when an email goes out, not what happens to it. With deliverability on, the campaign takes 3 more simulated days: on day one the 50 new mailboxes are allowed 20 emails each, 1,000 in total. With pacing, no mailbox ever sent more than 10 emails in one UTC hour (80 without pacing).
 
-- **Bounces:** 3% of addresses (`BOUNCE_RATE`), decided per address, so a dead address bounces every time.
-- **Replies:** 8% of accepted emails (`REPLY_RATE`), split by `REPLY_MIX` (interested 30%, not interested 35%, out of office 20%, unsubscribe 15%), arriving 12–72 hours later.
-- **Reply texts:** written texts per kind, including deliberately ambiguous ones for the AI. A test ensures the simple rules never give any of them a wrong label.
-- **Out of office:** 75% carry an `Auto-Submitted` header; most give a return date the rules can read; some give none.
-- **Late replies:** 10% of replies to follow-up 3 arrive 8–21 days later, after the contact has been deactivated, so the late-reply rule is exercised in every run.
+## 7. Trade-offs, limitations and what's next
 
-## Sending
+**Trade-offs taken on purpose:**
+- **Postgres as the queue.** It is simple and transactional, but it is not built for millions of jobs a minute.
+- **AI per segment, not per contact.** The emails are less personal, but the run fits the free tier.
+- **`needs_review` stops a contact.** That is safer than guessing, but without a key about 70% of replies end there.
+- **Hourly ticks with deliverability on.** They are needed for working hours across time zones, and they cost about 2.3× the run time.
 
-`sendDue` (`src/engine/send.ts`) works through due contacts in batches of 200 (`SEND_BATCH_SIZE`), several workers at once. Each email uses the AI template for the contact's segment when there is a valid one (T17), otherwise a hand-written fallback; both are checked for leftover blanks, length and spam words before sending. Contact details are cleaned first (braces removed, blanks given stand-ins like "there"), so one bad record can't stop the run. The mock provider runs on its own connection pool, like a real outside service. On the 10,000-contact seed, the first day's 1,883 emails take about 1.6 seconds with 4 workers.
+**Known limitations:**
+- **Warm-up favours early time zones.** Mailbox allowances reset at 00:00 UTC, so during warm-up the regions whose working hours fall early in the UTC day (Australia and Asia, then Europe) get first call on it and the Americas come last. Pacing limits how much one hour can take, not which hours come first.
+- **Mailboxes fill unevenly.** A new contact goes to the lowest-numbered mailbox with room, so low-numbered mailboxes fill first. This is correct by the rules, but uneven.
+- **Bounces only.** Auto-pause looks at bounces only; spam complaints are not simulated.
+- **Unsubscribe links go nowhere.** The link and `List-Unsubscribe` headers are the right shape, but nothing handles a click. The token is a hash of the seed and contact id, not a secret.
+- **No review queue.** There is no screen for a person to read a `needs_review` reply and restart the contact.
+- **Late replies are partial.** They are only simulated for follow-up 3.
+- **Generic greetings.** Contacts with missing names or companies get "Hi there" instead of being flagged.
+- **Local only.** The dashboard has no login, so it is for your own machine.
 
-## Replies
+**What's next:**
+- A review queue for `needs_review` replies, with a "restart" action.
+- A real unsubscribe endpoint with signed tokens.
+- Complaint-rate pauses.
+- Spreading new contacts across mailboxes by load.
+- A real provider adapter (SES or Postmark) behind the same idempotency key.
+- Per-contact AI personalisation for the interested segment once the budget allows.
 
-`deliverReplies` (`src/engine/replies.ts`) moves due mock replies into `replies` at the start of each day, in one statement that parallel callers can't double-deliver. A reply whose send was undone by a crash waits until the retried send is saved. `processReplies` labels them in batches of 25: plain rules first, then the AI for the unclear ones (T17), and `needs_review` when there is no AI or it fails, so the run never stops because of the AI. Interested, not interested and needs review stop the sequence; unsubscribe stops it and adds the address to the do-not-email list (it also beats an earlier bounce); out of office moves the next email to the day after the return date, or 7 days on. Replies are handled before sending, so a reply always stops the next email. Over 20 simulated days on the 10,000-contact seed with no AI key, every day took 0.5–2.0 seconds and the consistency checks were clean every day.
+## The dashboard
 
-## Deactivation
+Seven sections in the sidebar:
 
-`deactivateDue` (`src/engine/deactivate.ts`) closes contacts who stayed silent through the last wait, 500 at a time, after replies are handled and before sending, so a same-day reply or an out-of-office always wins. A deactivated contact who replies later becomes `replied`. In a 30-day run on the 10,000-contact seed with no AI key (replies, deactivation and 4 send workers each day), each day took 0.3–2.0 seconds, the consistency checks were clean every day, 7,031 contacts were deactivated, and 22 of them answered late (21 replied, 1 unsubscribed).
+- **Overview**: KPIs, a day slider with the funnel as of that day, daily activity, AI and deliverability cards.
+- **Campaign Timeline**: one row per day.
+- **Contact Journeys**: the nine stages and who moved between them.
+- **AI Classifier**: accuracy per source, the confusion table, example replies.
+- **Contacts**: search, filter and every send, reply and event for one contact.
+- **Activity Log**: every send, bounce, reply and deactivation.
+- **Deliverability**: the mailbox grid, an hour-by-hour strip of the day's sends by region, domains against the cap, and pauses.
 
-## AI
-
-The free models allow roughly 45 calls a day. The design: the AI writes one 4-email sequence per segment (20 segments = 4 role families × 5 industries), and code fills in each contact's details; replies are first sorted by plain rules (auto-reply header, "unsubscribe", "out of office"), and only unclear ones go to the AI, 25 per call. Answers are cached; on failure or an exhausted budget, a hand-written template or a `needs_review` label takes over so the system never stops.
-
-The client (`src/ai/client.ts`) uses three free models in order (`OPENROUTER_MODELS` in `.env.example`; how they were picked is in `docs/findings.md`). It spaces calls (`AI_RPM`), counts the day's calls against `DAILY_AI_BUDGET` in the database, retries busy or failing models twice, skips a dead model for 5 minutes, and refuses any model whose name doesn't end in `:free`. A first live call answered in 3.4 seconds; the same question again came from the cache in 3 ms without using the budget.
-
-First live results with the test key (`docs/findings.md`): Flint wrote a valid four-email sequence for one segment in 28 seconds, after the first live run showed it writing each email as one run-on line, which the template check now rejects. On the 12 deliberately harder replies in the mock's bank that the rules leave alone, the AI matched the true label 11 times in one 7.5-second call; the miss ("Who gave you my address?") went to `needs_review`, which stops emails just as `not_interested` would.
-
-## Known limitations so far
-
-- The tick/advance commands, report, dashboard and the timed full run are not built yet.
-- Without an AI key, every reply the rules can't label becomes `needs_review` and stops that contact's emails (about 70% of replies in the 20-day probe).
-- A `needs_review` reply ends the sequence; there is no screen or command for a person to read it and restart the contact.
-- Late replies are only simulated for follow-up 3; replies to earlier emails always arrive within 12–72 hours.
-- Contacts with missing names or companies get a less personal email ("Hi there") rather than being flagged for review.
+Every number is rebuilt from the database for the end of the selected simulated UTC day. The header buttons advance the clock 1 or 7 days, play day by day, or reset and re-seed, through the same engine functions as the CLI.
 
 ## Where to read more
 
-- [`docs/plain-guide-t01-t11.md`](docs/plain-guide-t01-t11.md): every task so far, in plain words.
-- [`docs/mental-model.md`](docs/mental-model.md): how the system works, as a whole.
+- [`docs/mental-model.md`](docs/mental-model.md): how the system works, in plain words.
 - [`docs/flow.md`](docs/flow.md): which function calls which, file by file.
-- [`docs/decisions.md`](docs/decisions.md): every decision with its alternatives and cost (D01–D44).
+- [`docs/decisions.md`](docs/decisions.md): every decision with its alternatives and cost.
+- [`docs/findings.md`](docs/findings.md): measurements and live AI results.
 - [`spec/site.md`](spec/site.md) and [`tasks/`](tasks/): the spec and each task's contract.

@@ -47,4 +47,4 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - 🗣 T22 Bonus: mailboxes + warm-up, auto-pause, timezone windows, domain caps, List-Unsubscribe
 - 🗣 T22b Deliverability page (mailbox grid, 24-hour send strip, pauses, domain caps; Deepak 25 Oct: full page)
 - 🗣 T22c Hourly pacing: a mailbox spends its day over the send window, not in one hour (D72; Deepak 25 Oct)
-- ☐ T23 README (7 sections, measured numbers, clean-clone check)
+- 🗣 T23 README (7 sections, measured numbers, clean-clone check)

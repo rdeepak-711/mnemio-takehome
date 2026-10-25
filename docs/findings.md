@@ -114,3 +114,9 @@ Same probe database after 60 days, no key, cache only. Reply rate 28.8% (2,769 o
 - Final counts are the same as the unpaced run earlier the same day: replied 1,965, bounced 454, unsubscribed 442, deactivated 7,139; 35,212 sends: 26,562 written by the engine and 8,650 by the seed as history before the 2 Nov start (no mailbox). Outcomes are decided per contact by the seeded mock, so pacing changes when an email goes out, not what happens to it.
 - Busiest (mailbox, UTC hour): 10 emails with pacing, 80 without. Engine sends fell in 286 distinct UTC hours with pacing, 214 without.
 - The unpaced run took 168.5 s on the same machine. This note doesn't explain the difference; it is one run each, not a benchmark.
+
+## The README on a clean clone — 2026-10-25 (T23)
+
+- Fresh `git clone` of `t23-readme` into a scratch folder. The database image built and the dependencies installed cleanly. `.env` was copied from `.env.example` with only `DATABASE_URL` pointed at a new empty database, because the repo's own container already holds port 5433. So `docker compose up` itself wasn't re-run from the clone.
+- Then the README's commands in order: `db:reset`, `seed`, `tick`, `advance -- --days 2`, `report`. Each one printed `invariants: ok`, and the report included the deliverability block (50 mailboxes, 2 paused). After that, `typecheck`, `format:check` and `npm test` (54 files, 1,141 tests) all passed, and `npm run build` was clean.
+- Section 6's numbers come from the two full runs above (deliverability on with pacing: 103.9 s; off: 45.6 s, 40 days). Each was run once on a fresh scratch database with no key and an empty AI cache, and both gave identical final counts.
