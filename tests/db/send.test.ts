@@ -17,7 +17,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 function config(overrides: Record<string, string> = {}): Config {
-  return loadConfig({ DATABASE_URL: url, BOUNCE_RATE: '0', REPLY_RATE: '0', ...overrides });
+  return loadConfig({ DATABASE_URL: url, BOUNCE_RATE: '0', REPLY_RATE: '0', DELIVERABILITY: 'off', ...overrides });
 }
 
 function deps(overrides: Record<string, string> = {}, extra: Partial<SendDeps> = {}): SendDeps {
@@ -360,7 +360,7 @@ describe('templates', () => {
 
 describe('on seeded data', () => {
   it('one run at SIM_START handles every due contact and keeps every invariant', async () => {
-    const cfg = loadConfig({ DATABASE_URL: url, CONTACT_COUNT: '1000' });
+    const cfg = loadConfig({ DATABASE_URL: url, CONTACT_COUNT: '1000', DELIVERABILITY: 'off' });
     await seed(pool, cfg);
     const summary = await sendDue(pool, cfg.simStart, { provider: createProvider(providerPool, cfg), config: cfg });
     expect(summary.sent + summary.bounced).toBeGreaterThan(600);

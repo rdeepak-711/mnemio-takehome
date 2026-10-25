@@ -460,3 +460,73 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Why:** each day stays one engine call through the same lock as the buttons (D58), the screen shows every day, and closing the tab stops the run.
 
 **Cost:** the speed is a pause between days, not a guarantee: a day that takes 2 seconds to tick still takes 2 seconds. With an AI key, playing spends the daily AI budget like `npm run advance` does.
+
+## D64 · 2026-10-25 · Deliverability is one switch, on by default, and the core engine tests switch it off
+
+**Decided:** the T22 features (mailboxes with warm-up and auto-pause, send windows, per-domain caps, List-Unsubscribe) are controlled by `DELIVERABILITY=on|off`, default `on`. `loadConfig` returns `delivery: Delivery | null` (`null` when off). The engine reads `config.delivery`; when it is `null`, `sendDue` and `advanceDays` behave exactly as before T22. The existing engine test helpers (`send`, `tick`, `replies`, `full-run`, `ai-prompts`) set `DELIVERABILITY=off`, so they keep testing the core on its own; the new `delivery-*` tests switch it on.
+
+**Considered:** always on (every core test would then also be a deliverability test, and a failure would not say which part broke); off by default (the CLI and dashboard would not show the bonus unless someone knew to switch it on); a separate flag per feature (five switches, and the send window is useless without hourly ticks anyway).
+
+**Why:** a reviewer can run the system with and without the bonus and compare, and the core numbers measured in T20 stay reproducible with `DELIVERABILITY=off`.
+
+**Cost:** two paths through `sendDue`. The T20 numbers in the README are re-measured in T23 with deliverability on.
+
+## D65 · 2026-10-25 · With deliverability on, a simulated day is 24 hourly ticks
+
+**Decided:** `advanceDays` moves the clock one hour at a time and runs a full tick (replies, classification, deactivation, sends) after each hour, 24 times per day. It still returns one summary per day (the 24 summed, `now` = the end of the day) and calls `onDay` once per day. `npm run run` is still one tick at the current time. With deliverability off, a day is one tick, as before. `src/clock.ts` gains `advanceHours(db, hours)`.
+
+**Considered:** keeping one tick a day at 09:00 UTC (at that moment it is 01:00–05:00 in the Americas and 20:00 in Sydney, so with a 9–17 window those contacts would never be emailed); recording sends at an earlier "slot" time inside the day that just passed (sends would be dated before the replies the same tick already processed, breaking "a reply that arrives before a due send wins"); moving the daily tick to another hour (no single UTC hour is inside working hours in all eight seeded timezones).
+
+**Why:** a send window only means something if the clock passes through the hours of the window.
+
+**Cost:** 24 times as many ticks. Most are cheap (nothing due, or nothing in window), but a day takes longer; measured at review and in T23. Classification runs every hour, so AI batches are smaller; the cache answers most replies because the mock's reply texts repeat (D53), but the AI call count per simulated day can be higher than before.
+
+## D66 · 2026-10-25 · Mailboxes ramp up per UTC day, each contact sticks to one mailbox, and one batch locks one mailbox
+
+**Decided:** `MAILBOX_COUNT` mailboxes (default 50, `outreach-01@mail1.mnemio.example` … spread over five sending domains) are created on the first send with deliverability on (`INSERT … ON CONFLICT DO NOTHING`), with `warmup_started_at` = that moment. A mailbox's limit on a UTC day is `min(WARMUP_MAX, WARMUP_START + WARMUP_STEP × age)`, where age is the number of whole UTC days from the warm-up start's date to that day (defaults 20, 10, 80: 20 on the first day, full at 80 on the seventh). It is counted from the `sends` rows of that mailbox on that UTC day, bounces included. A contact keeps the mailbox of its first engine send (`contacts.mailbox_id`), so its follow-ups come from the same sender. Each send batch locks one mailbox row (`FOR UPDATE SKIP LOCKED LIMIT 1`, the first not-paused mailbox that has due work it may send), counts its sends today, and claims at most its remaining capacity among due contacts whose mailbox is that one or none.
+
+**Considered:** a counter row per mailbox and day, updated per send (two workers locking counters in different orders can deadlock, and a deadlock aborts the batch); one global lock for all sending (exact, but the parallel workers of T13 would just wait in line); reserving capacity in a separate short transaction (a rolled-back batch would leave capacity used that was never sent); handing each contact to whichever mailbox is free (follow-ups would arrive from a different sender than the first email).
+
+**Why:** holding the mailbox row for the whole batch makes the count exact, a transaction never waits for a second mailbox so it cannot deadlock, and parallel workers spread over different mailboxes.
+
+**Cost:** a batch is at most the mailbox's remaining capacity (80 or fewer, not 200), so there are more, smaller transactions. A contact whose mailbox is full or paused waits for it, even if another mailbox has room.
+
+## D67 · 2026-10-25 · A mailbox pauses itself for 3 days when more than 10% of its last 100 sends bounced
+
+**Decided:** after every bounce, the engine looks at that mailbox's last 100 sends (`PAUSE_SAMPLE`) made since its warm-up started or last restarted (`sent_at >= warmup_started_at`). If there are at least 50 (`PAUSE_MIN_SENDS`) and the share that bounced is above `PAUSE_BOUNCE_RATE` (default 0.10), the mailbox is paused: `paused_until` = now + `PAUSE_DAYS` (default 3), its warm-up restarts at `paused_until` (`warmup_started_at` = `paused_until`), and a row goes into `mailbox_pauses` (when, until, the rate and the sample size). The rest of that batch is not sent; those contacts stay due. When `paused_until` has passed, the mailbox is used again at the first day of its warm-up.
+
+**Considered:** counting sends from before the last pause too (a mailbox coming back from a pause would be paused again by its first bounce, because the old bounces are still in the sample); pausing on a fixed number of bounces (a busy mailbox would pause sooner than a quiet one at the same rate); a smaller sample (with 3% background bounces, 2 bounces in the first 20 sends is already over 10% and happens about 12% of the time); pausing forever until someone resumes it (the simulation has no operator).
+
+**Why:** the brief's bounce rate is 3% and spread evenly over addresses, so a healthy mailbox should almost never pause, and a mailbox sending to a bad list should stop within a day. By the binomial formula, 6 or more bounces in 50 sends at 3% has a chance of about 0.4%, and 11 or more in 100 about 0.02%, so a 10k run may see about one pause by chance (an estimate, not a measurement).
+
+**Cost:** a new mailbox can't pause before its 50th send, so a truly bad list costs up to 50 bounces per mailbox. Contacts tied to a paused mailbox wait 3 days and then go out at the restarted warm-up pace.
+
+## D68 · 2026-10-25 · Send windows are the contact's local weekday hours, checked in the claim query
+
+**Decided:** with deliverability on, a due contact is claimed only when, in its own timezone (`contacts.timezone`, an IANA name), the day is Monday to Friday and the hour is in `SEND_WINDOW` (default `9-17`: from 09:00 up to but not including 17:00). The check is SQL in the claim (`($1::timestamptz AT TIME ZONE c.timezone)`, `isodow`, `hour`), so Postgres's timezone data handles daylight saving. `inSendWindow(at, timeZone, window)` in `src/delivery/rules.ts` is the same rule in TypeScript (via `Intl.DateTimeFormat`); a test checks the two agree on every hour across the two daylight-saving changes inside the simulation (Europe 25 Oct 2026, US 1 Nov 2026). A due contact outside its window simply stays due.
+
+**Considered:** snapping `next_action_at` to the next window opening when it is computed (the wait would then depend on the window, and every reschedule path would need to know about it); windows in the sender's timezone (the point is the recipient's inbox at a sensible hour); including weekends (most B2B outreach tools skip them by default).
+
+**Why:** one filter in one query covers first emails, follow-ups and rescheduled sends alike.
+
+**Cost:** weekends stop sending, so the campaign takes longer in calendar days; the full run's 60-day limit is checked in T23.
+
+## D69 · 2026-10-25 · At most 10 engine sends per recipient domain per UTC day, guarded by a non-blocking lock
+
+**Decided:** `sends.recipient_domain` stores the part of the address after `@`. Before sending to a contact, the batch takes `pg_try_advisory_xact_lock(hashtext('mnemio:domain:' || domain))`; if another transaction holds it, or the domain already has `DOMAIN_DAILY_CAP` (default 10) engine sends today (UTC), the contact is skipped for the rest of this tick: it stays due, and later claims in the same `sendDue` call leave it out by id. Bounced sends count.
+
+**Considered:** counting with a join from `sends` to `contacts` on every check (a scan of the day's sends for each send); a blocking `pg_advisory_xact_lock` (two batches holding one domain each and waiting for the other's would deadlock); a cap per mailbox per domain (several mailboxes could still flood one company on the same day).
+
+**Why:** the try-lock never waits, so it cannot deadlock, and while a transaction holds a domain's lock no other one can add to that domain's count, so the count is exact.
+
+**Cost:** a contact skipped because another worker held its domain waits for the next hour's tick, even when the cap had room.
+
+## D70 · 2026-10-25 · Every engine email carries List-Unsubscribe headers and a footer link, with no handler behind them
+
+**Decided:** with deliverability on, every email gets the headers `List-Unsubscribe: <mailto:unsubscribe@mnemio.example?subject=unsubscribe%20<id>-<token>>, <https://mnemio.example/unsubscribe/<id>/<token>>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058 one-click), and the body ends with `\n\n--\nNot interested? Unsubscribe here: <link>`. `<token>` is the first 16 hex characters of `sha256("unsubscribe:<SEED>:<contact id>")`. The headers are stored in `sends.headers` and passed to the provider with the sender address. `checkContent` runs on the template's text before the footer is added. `.example` domains are reserved and never resolve (RFC 2606).
+
+**Considered:** a one-click handler route in the dashboard (nothing is deployed, the links point at a domain that does not exist, and an unsubscribe by link would need its own invariant beside invariant 3); a footer only (mail clients show their unsubscribe button from the header, and Gmail and Yahoo require the one-click header from bulk senders since 2024).
+
+**Why:** the brief asks for the header and the link; recipients in the mock still unsubscribe by replying, which the engine already handles.
+
+**Cost:** the token is derived from `SEED`, which is in `.env.example`, so anyone could forge it; a real system would use an HMAC with a secret key. The footer makes stored bodies up to about 110 characters longer than the 1,200 the content check allows.

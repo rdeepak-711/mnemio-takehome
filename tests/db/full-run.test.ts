@@ -17,7 +17,7 @@ const providerPool = new pg.Pool({ connectionString: url });
 let fake: FakeOpenRouter;
 
 function config(overrides: Record<string, string> = {}): Config {
-  return loadConfig({ DATABASE_URL: url, SEED: '42', CONTACT_COUNT: '300', ...overrides });
+  return loadConfig({ DATABASE_URL: url, SEED: '42', CONTACT_COUNT: '300', DELIVERABILITY: 'off', ...overrides });
 }
 
 function deps(cfg: Config, ai?: AiClient): TickDeps {

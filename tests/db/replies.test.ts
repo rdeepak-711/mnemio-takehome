@@ -473,7 +473,7 @@ describe('processReplies: out of office', () => {
     const c = await contact('first_sent', { due: NOW });
     await inbox(c.key('first'), TEXT.interested);
     await tick(fakeAi().classify);
-    const cfg = loadConfig({ DATABASE_URL: url, BOUNCE_RATE: '0', REPLY_RATE: '0' });
+    const cfg = loadConfig({ DATABASE_URL: url, BOUNCE_RATE: '0', REPLY_RATE: '0', DELIVERABILITY: 'off' });
     const providerPool = new pg.Pool({ connectionString: url });
     try {
       const summary = await sendDue(pool, NOW, { provider: createProvider(providerPool, cfg), config: cfg });
