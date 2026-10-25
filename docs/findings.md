@@ -64,3 +64,7 @@ Probe database, 10,000-contact seed, no OpenRouter key (cache only: 1 sequence a
 - With no key, saved answers were still used: 1,339 sends came from the one cached sequence (`template_source = 'cache'`), and 1,454 replies were labelled from the 13 cached reply labels. The reply bank is a fixed set of texts, so a handful of saved labels covers most replies. The rest: 640 by rule, 12 fallback.
 - Only days 24–30 of the first run were kept in the output: days 24–27 deactivated 706–726 contacts a day, days 28–30 between 21 and 35. Why the peak falls there was not checked; T19's report will show it per day.
 
+
+## First report on a finished run — 2026-10-23 (T19)
+
+Same probe database after 60 days, no key, cache only. Reply rate 28.8% (2,769 of 9,615 contacts with an accepted send), which fits the mock's 8% chance per email across up to 4 emails. Bounce rate 1.3% (454 of 35,245 sends, seed included). Engine emails: 1,339 from the cached sequence, 25,256 fallback. Classifier since start: rules 640 of 640 correct, AI (all from 13 cached labels) 1,324 of 1,454 correct (91.1%), 12 fallback; 142 needs review; 0 unlabelled; 0 orphaned.

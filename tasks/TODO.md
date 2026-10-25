@@ -36,7 +36,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 
 ## Layer 5 — Whole system
 - 🗣 T18 Tick + advance CLI
-- ☐ T19 Report (+ classifier accuracy)
+- 🗣 T19 Report (+ classifier accuracy)
 - ☐ T20 Full 10k run, timed
 
 ## Layer 6 — Dashboard

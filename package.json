@@ -15,7 +15,8 @@
     "seed": "tsx src/seed/run.ts",
     "tick": "tsx src/main.ts run",
     "advance": "tsx src/main.ts advance",
-    "ai:warm": "tsx src/main.ts ai:warm"
+    "ai:warm": "tsx src/main.ts ai:warm",
+    "report": "tsx src/main.ts report"
   },
   "dependencies": {
     "@faker-js/faker": "10.6.0",

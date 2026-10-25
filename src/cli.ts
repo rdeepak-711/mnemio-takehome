@@ -1,8 +1,12 @@
 import { MAX_ADVANCE_DAYS, type TickSummary } from './engine/tick';
 
-export type Command = { command: 'run' } | { command: 'advance'; days: number } | { command: 'ai:warm' };
+export type Command =
+  | { command: 'run' }
+  | { command: 'advance'; days: number }
+  | { command: 'ai:warm' }
+  | { command: 'report' };
 
-const USAGE = `usage: main.ts run | main.ts advance --days N (N from 1 to ${MAX_ADVANCE_DAYS}) | main.ts ai:warm`;
+const USAGE = `usage: main.ts run | main.ts advance --days N (N from 1 to ${MAX_ADVANCE_DAYS}) | main.ts ai:warm | main.ts report`;
 
 function usage(problem: string): Error {
   return new Error(`${problem}\n${USAGE}`);
@@ -11,7 +15,7 @@ function usage(problem: string): Error {
 export function parseArgs(argv: string[]): Command {
   const [command, ...rest] = argv;
   if (command === undefined) throw usage('no command given');
-  if (command === 'run' || command === 'ai:warm') {
+  if (command === 'run' || command === 'ai:warm' || command === 'report') {
     if (rest.length > 0) throw usage(`unexpected arguments after ${command}: ${rest.join(' ')}`);
     return { command };
   }
