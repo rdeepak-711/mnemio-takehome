@@ -75,3 +75,44 @@ export const NEXT_LABEL: Record<string, string> = {
   follow_up_3: 'Follow-up 3',
   deactivate: 'Deactivate',
 };
+
+// The classifier's labels, as the classifier page and the overview card name them.
+export const LABEL_NAME: Record<string, string> = {
+  interested: 'Interested',
+  not_interested: 'Not interested',
+  out_of_office: 'Out of office',
+  unsubscribe: 'Unsubscribe request',
+  needs_review: 'Uncertain (needs review)',
+};
+
+// Which mechanism labelled a reply: the only "explanation" the engine stores (D60).
+export const SOURCE_WORDS: Record<string, string> = {
+  rule: 'a rule matched',
+  ai: 'the AI answered',
+  fallback: 'the fallback, because the AI gave no answer',
+};
+
+// The activity log's kinds (D61), by human name.
+export const KIND_LABEL: Record<string, string> = {
+  sent: 'Email sent',
+  bounced: 'Bounced',
+  reply: 'Reply',
+  unsubscribed: 'Unsubscribed',
+  rescheduled: 'Rescheduled',
+  deactivated: 'Deactivated',
+  suppressed: 'Suppressed',
+};
+
+// Why a contact entered its stage: the status_changed event's reason (D62); null is a contact never contacted.
+export function reasonWords(reason: string | null): string {
+  if (reason === null) return 'not contacted yet';
+  const words: Record<string, string> = {
+    sent: 'email sent',
+    reply: 'replied',
+    unsubscribe: 'asked to unsubscribe',
+    bounced: 'email bounced',
+    deactivate_due: 'no reply after the last follow-up',
+    suppressed: 'on the do-not-email list',
+  };
+  return words[reason] ?? reason;
+}

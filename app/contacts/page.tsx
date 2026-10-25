@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { STATUSES } from '../../src/lifecycle';
 import type { ContactPage } from '../../src/web/contacts';
 import { STATUS_LABEL, fmtInt } from '../_components/api';
@@ -11,12 +12,25 @@ import { Empty, Failed, Loading } from '../_components/states';
 import { useApi } from '../_components/useApi';
 
 // Contacts: server-side pages of 50 (/api/contacts), a debounced search, a status filter and a detail panel.
-export default function ContactsPage() {
+// `?q=` and `?status=` in the URL set the filters on load (links from the activity log and the stage drill-down).
+function Contacts() {
   const { version } = useSim();
-  const [input, setInput] = useState('');
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
+  const url = useSearchParams();
+  const urlQ = url.get('q') ?? '';
+  const rawStatus = url.get('status') ?? '';
+  const urlStatus = (STATUSES as readonly string[]).includes(rawStatus) ? rawStatus : ''; // an unknown one is ignored
+  const [input, setInput] = useState(urlQ);
+  const [q, setQ] = useState(urlQ.trim());
+  const [status, setStatus] = useState(urlStatus);
   const [page, setPage] = useState(1);
+
+  // A link to this page with other filters, followed while it is open.
+  useEffect(() => {
+    setInput(urlQ);
+    setQ(urlQ.trim());
+    setStatus(urlStatus);
+    setPage(1);
+  }, [urlQ, urlStatus]);
   const [open, setOpen] = useState<number | null>(null);
   const opener = useRef<HTMLElement | null>(null);
 
@@ -123,5 +137,14 @@ export default function ContactsPage() {
 
       {open !== null && <ContactPanel id={open} onClose={close} />}
     </>
+  );
+}
+
+// useSearchParams needs a Suspense boundary for Next to prerender the page shell.
+export default function ContactsPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Contacts />
+    </Suspense>
   );
 }

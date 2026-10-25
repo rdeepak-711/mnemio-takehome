@@ -790,6 +790,334 @@ h2 {
   color: var(--warn);
 }
 
+/* T21b: shared bits */
+.section {
+  margin-top: 16px;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.card-head a {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.note {
+  margin: 8px 0;
+}
+.disclaimer {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: var(--radius);
+  background: rgba(251, 191, 36, 0.07);
+  max-width: 80ch;
+}
+h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+/* Play controls */
+.play {
+  min-width: 96px;
+}
+.play[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.speed select {
+  padding: 6px 8px;
+}
+
+/* Funnel bars and journey stages that open the drill-down */
+.bar-button {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  width: calc(100% + 8px);
+  text-align: left;
+  color: inherit;
+}
+.bar-button:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: var(--line-strong);
+}
+.bar-track,
+.bar-fill {
+  display: block;
+}
+.stage-button {
+  cursor: pointer;
+  outline: none;
+}
+.stage-button:hover rect,
+.stage-button:focus-visible rect {
+  stroke: var(--accent);
+}
+.stage-button:focus-visible rect {
+  stroke-width: 2;
+}
+
+/* Stage drill-down panel */
+.stage-meta {
+  color: var(--muted);
+  margin: 10px 0 14px;
+}
+.stage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.stage-list li {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  display: grid;
+  gap: 2px;
+}
+.stage-list .company {
+  color: var(--muted);
+}
+.stage-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0 12px;
+  margin: 4px 0 0;
+  font-size: 12.5px;
+}
+.stage-facts dt {
+  color: var(--faint);
+}
+.stage-facts dd {
+  margin: 0;
+}
+.who {
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* Activity feed */
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.feed li {
+  display: grid;
+  grid-template-columns: 150px 120px minmax(110px, 180px) minmax(0, 1fr);
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.feed li:last-child {
+  border-bottom: 0;
+}
+.feed .when {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.feed .what {
+  color: var(--muted);
+  min-width: 0;
+  word-break: break-word;
+}
+/* On the overview card the feed is narrow: time and kind on one line, contact and description under them. */
+.feed-compact li {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.feed-compact .who,
+.feed-compact .what {
+  grid-column: 1 / -1;
+}
+.kind.k-sent .dot {
+  background: var(--c-first);
+}
+.kind.k-bounced .dot {
+  background: var(--s-bounced);
+}
+.kind.k-reply .dot {
+  background: var(--s-replied);
+}
+.kind.k-unsubscribed .dot {
+  background: var(--s-unsubscribed);
+}
+.kind.k-rescheduled .dot {
+  background: #f0abfc;
+}
+.kind.k-deactivated .dot {
+  background: var(--s-deactivated);
+}
+.kind.k-suppressed .dot {
+  background: #fb923c;
+}
+.filters input[type='date'] {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  padding: 5px 10px;
+  color-scheme: dark;
+}
+.filters button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Classifier */
+.shares {
+  display: grid;
+  gap: 8px;
+}
+.share-row {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+}
+.share-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.share-count {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.l-interested {
+  background: #34d399;
+}
+.l-not_interested {
+  background: #fb7185;
+}
+.l-out_of_office {
+  background: #fbbf24;
+}
+.l-unsubscribe {
+  background: #a78bfa;
+}
+.l-needs_review {
+  background: #94a3b8;
+}
+.src-rule {
+  background: #38bdf8;
+}
+.src-ai {
+  background: var(--accent);
+}
+.src-fallback {
+  background: #94a3b8;
+}
+.accuracy {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 14px 0 0;
+  font-size: 13.5px;
+}
+.accuracy dt {
+  color: var(--muted);
+}
+.accuracy dd {
+  margin: 0;
+  font-family: var(--mono);
+}
+.matrix-scroll {
+  overflow-x: auto;
+}
+.matrix {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.matrix th,
+.matrix td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  word-break: break-word;
+  hyphens: auto;
+}
+.matrix thead th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  text-align: right;
+}
+.matrix thead th:first-child,
+.matrix tbody th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+}
+.matrix td {
+  font-family: var(--mono);
+  text-align: right;
+}
+.matrix td.zero {
+  color: var(--faint);
+}
+.matrix td.diag {
+  outline: 1px solid rgba(94, 234, 212, 0.6);
+  outline-offset: -3px;
+}
+.examples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.example-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  font-size: 13.5px;
+}
+.example-list blockquote {
+  margin: 0 0 4px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--line-strong);
+  background: var(--panel-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.example-list .meta {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* Timeline table */
+.table-static tbody tr {
+  cursor: default;
+}
+.table .num {
+  font-family: var(--mono);
+  text-align: right;
+}
+.table-static th:nth-child(n + 3) {
+  text-align: right;
+}
+.table tr.selected {
+  background: var(--accent-soft);
+}
+
 /* Phone and tablet */
 @media (max-width: 860px) {
   .shell {
@@ -806,9 +1134,13 @@ h2 {
     justify-content: space-between;
     gap: 12px;
   }
+  .nav {
+    flex-wrap: wrap;
+  }
   .nav ul {
     margin: 0;
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
   }
   .nav a {
@@ -870,6 +1202,33 @@ h2 {
   }
   .kpi-value {
     font-size: 20px;
+  }
+  .table .num {
+    text-align: left;
+  }
+  .feed li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .feed .who,
+  .feed .what {
+    grid-column: 1 / -1;
+  }
+  .share-row {
+    grid-template-columns: 118px minmax(0, 1fr) 84px;
+    gap: 8px;
+  }
+  .matrix {
+    font-size: 11.5px;
+    min-width: 540px;
+  }
+  .matrix th,
+  .matrix td {
+    padding: 4px;
+    word-break: normal;
+    hyphens: manual;
+  }
+  .matrix thead th {
+    font-size: 10.5px;
   }
 }
 

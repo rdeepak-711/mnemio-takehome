@@ -119,8 +119,20 @@ const SPECS: Spec[] = [
   },
 ];
 
+// The reason the engine writes on a status change into each status (src/engine/send.ts, replies.ts, deactivate.ts).
+const REASON: Record<string, string> = {
+  first_sent: 'sent',
+  follow_up_1_sent: 'sent',
+  follow_up_2_sent: 'sent',
+  follow_up_3_sent: 'sent',
+  replied: 'reply',
+  bounced: 'bounced',
+  unsubscribed: 'unsubscribe',
+  deactivated: 'deactivate_due',
+};
+
 // Inserts the dataset into an empty, migrated database and sets the clock. Also writes `sent` and `reply_received`
-// events, which the dashboard must ignore when it rebuilds statuses.
+// events, which the dashboard must ignore when it rebuilds statuses, with the same data and reasons the engine writes.
 export async function loadWebFixture(pool: pg.Pool): Promise<FixtureIds> {
   await setNow(pool, FIXTURE_NOW);
   const ids = {} as FixtureIds;
@@ -156,20 +168,20 @@ export async function loadWebFixture(pool: pg.Pool): Promise<FixtureIds> {
       ]);
     }
     for (const [at, trueLabel] of s.replies) {
-      await pool.query(
+      const reply = await pool.query<{ id: number }>(
         `INSERT INTO replies (contact_id, send_id, body, received_at, true_label, label, label_source, classified_at)
-         VALUES ($1, $2, 'Reply text', $3, $4, $4, 'rule', $3)`,
+         VALUES ($1, $2, 'Reply text', $3, $4, $4, 'rule', $3) RETURNING id`,
         [id, lastSend, at, trueLabel],
       );
       await pool.query(
-        `INSERT INTO events (contact_id, type, data, occurred_at) VALUES ($1, 'reply_received', '{}', $2)`,
-        [id, at],
+        `INSERT INTO events (contact_id, type, data, occurred_at) VALUES ($1, 'reply_received', $2, $3)`,
+        [id, JSON.stringify({ reply_id: reply.rows[0]!.id, label: trueLabel, label_source: 'rule' }), at],
       );
     }
     for (const [from, to, at] of s.moves) {
       await pool.query(
         `INSERT INTO events (contact_id, type, data, occurred_at) VALUES ($1, 'status_changed', $2, $3)`,
-        [id, JSON.stringify({ from, to, reason: 'fixture' }), at],
+        [id, JSON.stringify({ from, to, reason: REASON[to] }), at],
       );
     }
   }
