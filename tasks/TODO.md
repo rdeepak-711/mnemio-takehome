@@ -44,5 +44,6 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - 🗣 T21b Extras (classifier view, activity log, play/pause)
 
 ## Layer 7 — Bonus and delivery
-- 🧪 T22 Bonus: mailboxes + warm-up, auto-pause, timezone windows, domain caps, List-Unsubscribe
+- 🗣 T22 Bonus: mailboxes + warm-up, auto-pause, timezone windows, domain caps, List-Unsubscribe
+- ☐ T22b Deliverability page (mailbox grid, 24-hour send strip, pauses, domain caps; Deepak 25 Oct: full page)
 - ☐ T23 README (7 sections, measured numbers, clean-clone check)
