@@ -68,7 +68,7 @@ export async function fullRun(
   }
   const advance = lap();
 
-  const violations = await checkInvariants(pool);
+  const violations = await checkInvariants(pool, 50, config);
   const check = lap();
   const result = await report(pool, { simStart: config.simStart, dailyAiBudget: config.dailyAiBudget });
   const reportMs = lap();

@@ -4,7 +4,7 @@ import type { Provider } from '../mock/provider';
 import type { AiClient } from '../ai/client';
 import { createClassifier } from '../ai/classify';
 import { createSequenceWriter } from '../ai/sequences';
-import { advance, getNow } from '../clock';
+import { advance, advanceHours, getNow } from '../clock';
 import { deactivateDue } from './deactivate';
 import { deliverReplies, processReplies, type ProcessSummary } from './replies';
 import { sendDue, type SendSummary } from './send';
@@ -50,10 +50,46 @@ export async function advanceDays(
   }
   const summaries: TickSummary[] = [];
   for (let i = 0; i < days; i++) {
-    await advance(deps.pool, 1);
-    const summary = await runTick(deps);
+    const summary = deps.config.delivery ? await hourlyDay(deps) : await dailyTick(deps);
     await onDay?.(summary); // finished before the next day's advance
     summaries.push(summary);
   }
   return summaries;
+}
+
+async function dailyTick(deps: TickDeps): Promise<TickSummary> {
+  await advance(deps.pool, 1);
+  return runTick(deps);
+}
+
+// With deliverability on, a day is 24 hourly ticks, so the clock passes through every local send window (D65).
+// The day's summary is the 24 summed, with now = the last tick's.
+async function hourlyDay(deps: TickDeps): Promise<TickSummary> {
+  let day: TickSummary | null = null;
+  for (let hour = 0; hour < 24; hour++) {
+    await advanceHours(deps.pool, 1);
+    const tick = await runTick(deps);
+    day = day ? addTicks(day, tick) : tick;
+  }
+  return day!;
+}
+
+function addTicks(a: TickSummary, b: TickSummary): TickSummary {
+  return {
+    now: b.now,
+    delivered: a.delivered + b.delivered,
+    labelled: {
+      processed: a.labelled.processed + b.labelled.processed,
+      rule: a.labelled.rule + b.labelled.rule,
+      ai: a.labelled.ai + b.labelled.ai,
+      fallback: a.labelled.fallback + b.labelled.fallback,
+    },
+    deactivated: a.deactivated + b.deactivated,
+    sent: {
+      sent: a.sent.sent + b.sent.sent,
+      bounced: a.sent.bounced + b.sent.bounced,
+      suppressed: a.sent.suppressed + b.sent.suppressed,
+      batches: a.sent.batches + b.sent.batches,
+    },
+  };
 }

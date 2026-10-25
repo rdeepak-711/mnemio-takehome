@@ -171,7 +171,7 @@ describe('sendDue with the sequence writer', () => {
   }
 
   function deps(writer: ReturnType<typeof createSequenceWriter>) {
-    const cfg = loadConfig({ DATABASE_URL: url, BOUNCE_RATE: '0', REPLY_RATE: '0' });
+    const cfg = loadConfig({ DATABASE_URL: url, BOUNCE_RATE: '0', REPLY_RATE: '0', DELIVERABILITY: 'off' });
     return { provider: createProvider(providerPool, cfg), config: cfg, getTemplate: writer.getTemplate };
   }
 

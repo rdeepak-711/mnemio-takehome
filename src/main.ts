@@ -4,6 +4,7 @@ import { warmSequences } from './ai/warm';
 import { parseArgs, formatTick, type Command } from './cli';
 import { closePool } from './db/pool';
 import { advanceDays, runTick, type TickSummary } from './engine/tick';
+import { deliveryReport, formatDelivery } from './delivery/report';
 import { checkInvariants, type Violation } from './invariants';
 import { formatFullRun, fullRun } from './full-run';
 import { formatReport, report } from './report';
@@ -47,7 +48,11 @@ if (command) {
 
     if (command.command === 'report') {
       // Read-only, so no invariants check.
-      console.log(formatReport(await report(pool, { simStart: config.simStart, dailyAiBudget: config.dailyAiBudget })));
+      const result = await report(pool, { simStart: config.simStart, dailyAiBudget: config.dailyAiBudget });
+      console.log(formatReport(result));
+      if (config.delivery) {
+        console.log(`\n${formatDelivery(await deliveryReport(pool, result.now, config.delivery), config.delivery)}`);
+      }
     } else if (command.command === 'ai:warm') {
       if (!config.openrouterApiKey) console.log('no OPENROUTER_API_KEY: every sequence uses the fallback');
       const results = await warmSequences(ai);
@@ -75,7 +80,7 @@ if (command) {
       } else {
         if (command.command === 'run') await onDay(await runTick(deps));
         else await advanceDays(deps, command.days, onDay);
-        violations = await checkInvariants(pool);
+        violations = await checkInvariants(pool, 50, config);
         printInvariants(violations);
       }
     }

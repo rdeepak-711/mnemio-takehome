@@ -16,6 +16,17 @@ export type Config = {
   openrouterModels: string[];
   aiRpm: number;
   dailyAiBudget: number;
+  delivery: Delivery | null; // null when DELIVERABILITY=off (D64)
+};
+
+// T22 deliverability settings (D64–D70).
+export type Delivery = {
+  mailboxCount: number;
+  warmup: { start: number; step: number; max: number };
+  pauseBounceRate: number;
+  pauseDays: number;
+  sendWindow: { startHour: number; endHour: number }; // local hours, start inclusive, end exclusive
+  domainDailyCap: number;
 };
 
 type Env = Record<string, string | undefined>;
@@ -78,6 +89,42 @@ function parseReplyMix(raw: string): Record<ReplyLabel, number> {
   return mix;
 }
 
+// "H-H", spaces allowed around each number, 0 <= start < end <= 24.
+function parseSendWindow(raw: string): Delivery['sendWindow'] {
+  const match = /^\s*(\d+)\s*-\s*(\d+)\s*$/.exec(raw);
+  const startHour = Number(match?.[1]);
+  const endHour = Number(match?.[2]);
+  if (!match || !(startHour >= 0 && startHour < endHour && endHour <= 24)) {
+    throw new Error(`SEND_WINDOW: expected start-end hours with 0 <= start < end <= 24, like 9-17 (got "${raw}")`);
+  }
+  return { startHour, endHour };
+}
+
+// The eight settings are validated even when DELIVERABILITY is off, so a typo never hides until it's switched on.
+function parseDelivery(env: Env): Delivery | null {
+  const switchRaw = read(env, 'DELIVERABILITY', 'on').trim().toLowerCase();
+  if (switchRaw !== 'on' && switchRaw !== 'off') {
+    throw new Error(`DELIVERABILITY: expected on or off (got "${env.DELIVERABILITY}")`);
+  }
+  const warmup = {
+    start: check('WARMUP_START', int(1), read(env, 'WARMUP_START', '20')),
+    step: check('WARMUP_STEP', int(0), read(env, 'WARMUP_STEP', '10')),
+    max: check('WARMUP_MAX', int(1), read(env, 'WARMUP_MAX', '80')),
+  };
+  if (warmup.start > warmup.max) {
+    throw new Error(`WARMUP_START: must not be above WARMUP_MAX (${warmup.max}), got ${warmup.start}`);
+  }
+  const delivery: Delivery = {
+    mailboxCount: check('MAILBOX_COUNT', int(1, 1000), read(env, 'MAILBOX_COUNT', '50')),
+    warmup,
+    pauseBounceRate: check('PAUSE_BOUNCE_RATE', rate, read(env, 'PAUSE_BOUNCE_RATE', '0.10')),
+    pauseDays: check('PAUSE_DAYS', int(1), read(env, 'PAUSE_DAYS', '3')),
+    sendWindow: parseSendWindow(read(env, 'SEND_WINDOW', '9-17')),
+    domainDailyCap: check('DOMAIN_DAILY_CAP', int(1), read(env, 'DOMAIN_DAILY_CAP', '10')),
+  };
+  return switchRaw === 'on' ? delivery : null;
+}
+
 export function loadConfig(env: Env): Config {
   const databaseUrl = env.DATABASE_URL?.trim();
   if (!databaseUrl) throw new Error('DATABASE_URL: required but missing or empty');
@@ -108,5 +155,6 @@ export function loadConfig(env: Env): Config {
       .filter(Boolean),
     aiRpm: check('AI_RPM', int(1), read(env, 'AI_RPM', '20')),
     dailyAiBudget: check('DAILY_AI_BUDGET', int(0), read(env, 'DAILY_AI_BUDGET', '45')),
+    delivery: parseDelivery(env),
   };
 }

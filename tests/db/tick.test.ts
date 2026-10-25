@@ -21,7 +21,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 let fake: FakeOpenRouter;
 
 function config(overrides: Record<string, string> = {}): Config {
-  return loadConfig({ DATABASE_URL: url, SEED: '42', CONTACT_COUNT: '500', ...overrides });
+  return loadConfig({ DATABASE_URL: url, SEED: '42', CONTACT_COUNT: '500', DELIVERABILITY: 'off', ...overrides });
 }
 
 function deps(cfg: Config, ai?: AiClient): TickDeps {
@@ -172,7 +172,7 @@ describe('advanceDays', () => {
     expect(summaries.reduce((total, s) => total + s.sent.sent, 0)).toBeGreaterThan(0);
     expect(summaries.reduce((total, s) => total + s.deactivated, 0)).toBeGreaterThan(0);
     expect(summaries.reduce((total, s) => total + s.labelled.processed, 0)).toBeGreaterThan(0);
-  });
+  }, 60_000); // about 5 s, which is Vitest's default limit
 
   it('calls onDay once per day with that day’s summary', async () => {
     const cfg = config({ CONTACT_COUNT: '50' });

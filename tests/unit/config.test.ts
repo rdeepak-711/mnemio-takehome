@@ -28,6 +28,14 @@ describe('loadConfig defaults', () => {
       openrouterModels: [],
       aiRpm: 20,
       dailyAiBudget: 45,
+      delivery: {
+        mailboxCount: 50,
+        warmup: { start: 20, step: 10, max: 80 },
+        pauseBounceRate: 0.1,
+        pauseDays: 3,
+        sendWindow: { startHour: 9, endHour: 17 },
+        domainDailyCap: 10,
+      },
     });
   });
 
@@ -142,5 +150,72 @@ describe('review fixes', () => {
     expect(config.aiRpm).toBe(20);
     expect(config.sendBatchSize).toBe(200);
     expect(config.waitDays).toEqual([3, 5, 7, 7]);
+  });
+});
+
+// T22 (D64–D70)
+describe('DELIVERABILITY and its settings', () => {
+  it.each(['off', 'OFF', ' off '])('DELIVERABILITY=%j gives delivery null', (value) => {
+    expect(loadConfig({ ...base, DELIVERABILITY: value }).delivery).toBeNull();
+  });
+
+  it.each(['on', 'ON', ' on ', ''])('DELIVERABILITY=%j gives delivery settings', (value) => {
+    expect(loadConfig({ ...base, DELIVERABILITY: value }).delivery).not.toBeNull();
+  });
+
+  it.each(['yes', 'true', '1', 'maybe'])('DELIVERABILITY=%j throws naming DELIVERABILITY', (value) => {
+    expect(() => loadConfig({ ...base, DELIVERABILITY: value })).toThrow(/DELIVERABILITY/);
+  });
+
+  it('reads every setting', () => {
+    const delivery = loadConfig({
+      ...base,
+      MAILBOX_COUNT: '3',
+      WARMUP_START: '5',
+      WARMUP_STEP: '0',
+      WARMUP_MAX: '5',
+      PAUSE_BOUNCE_RATE: '0.2',
+      PAUSE_DAYS: '1',
+      SEND_WINDOW: ' 0 - 24 ',
+      DOMAIN_DAILY_CAP: '1',
+    }).delivery;
+    expect(delivery).toEqual({
+      mailboxCount: 3,
+      warmup: { start: 5, step: 0, max: 5 },
+      pauseBounceRate: 0.2,
+      pauseDays: 1,
+      sendWindow: { startHour: 0, endHour: 24 },
+      domainDailyCap: 1,
+    });
+  });
+
+  it.each([
+    ['MAILBOX_COUNT', '0'],
+    ['MAILBOX_COUNT', '1001'],
+    ['MAILBOX_COUNT', '2.5'],
+    ['WARMUP_START', '0'],
+    ['WARMUP_STEP', '-1'],
+    ['WARMUP_MAX', '0'],
+    ['PAUSE_BOUNCE_RATE', '1.5'],
+    ['PAUSE_BOUNCE_RATE', 'x'],
+    ['PAUSE_DAYS', '0'],
+    ['DOMAIN_DAILY_CAP', '0'],
+  ])('%s=%s throws naming the variable', (name, value) => {
+    expect(() => loadConfig({ ...base, [name]: value })).toThrow(new RegExp(name));
+  });
+
+  it('WARMUP_START above WARMUP_MAX throws naming WARMUP_START', () => {
+    expect(() => loadConfig({ ...base, WARMUP_START: '90', WARMUP_MAX: '80' })).toThrow(/WARMUP_START/);
+  });
+
+  it.each(['17-9', '9-9', '9', '9-17-20', '-1-17', '9-25', 'a-b', '9.5-17'])(
+    'SEND_WINDOW=%j throws naming SEND_WINDOW',
+    (value) => {
+      expect(() => loadConfig({ ...base, SEND_WINDOW: value })).toThrow(/SEND_WINDOW/);
+    },
+  );
+
+  it('still validates the settings when DELIVERABILITY is off', () => {
+    expect(() => loadConfig({ ...base, DELIVERABILITY: 'off', SEND_WINDOW: '17-9' })).toThrow(/SEND_WINDOW/);
   });
 });

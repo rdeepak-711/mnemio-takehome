@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getPool, closePool } from '../../src/db/pool';
 import { resetDb } from '../../src/db/migrate';
-import { getNow, setNow, advance } from '../../src/clock';
+import { getNow, setNow, advance, advanceHours } from '../../src/clock';
 
 const pool = getPool(process.env.TEST_DATABASE_URL!);
 const at = (iso: string) => new Date(iso);
@@ -95,5 +95,32 @@ describe('inside a transaction', () => {
       client.release();
     }
     expect((await getNow(pool)).toISOString()).toBe('2026-11-02T09:00:00.000Z');
+  });
+});
+
+// T22 (D65): hourly ticks.
+describe('advanceHours', () => {
+  it('advanceHours(1) moves exactly one hour and returns the new now', async () => {
+    await setNow(pool, at('2026-11-02T09:00:00Z'));
+    expect((await advanceHours(pool, 1)).toISOString()).toBe('2026-11-02T10:00:00.000Z');
+    expect((await getNow(pool)).toISOString()).toBe('2026-11-02T10:00:00.000Z');
+  });
+
+  it('24 hours across the US daylight-saving change is exactly one UTC day', async () => {
+    await setNow(pool, at('2026-10-31T09:00:00Z'));
+    expect((await advanceHours(pool, 24)).toISOString()).toBe('2026-11-01T09:00:00.000Z');
+  });
+
+  it.each([0, -1, 1.5, Number.NaN])(
+    'advanceHours(%s) throws naming hours and does not move the clock',
+    async (hours) => {
+      await setNow(pool, at('2026-11-02T09:00:00Z'));
+      await expect(advanceHours(pool, hours)).rejects.toThrow(/hours/);
+      expect((await getNow(pool)).toISOString()).toBe('2026-11-02T09:00:00.000Z');
+    },
+  );
+
+  it('advanceHours before the clock is set throws the "not set" error', async () => {
+    await expect(advanceHours(pool, 1)).rejects.toThrow(/sim_clock.*not set.*seed/i);
   });
 });

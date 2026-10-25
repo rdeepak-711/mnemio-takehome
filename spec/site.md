@@ -66,7 +66,18 @@ OPENROUTER_API_KEY=
 OPENROUTER_MODELS=
 AI_RPM=20
 DAILY_AI_BUDGET=45
+DELIVERABILITY=on
+MAILBOX_COUNT=50
+WARMUP_START=20
+WARMUP_STEP=10
+WARMUP_MAX=80
+PAUSE_BOUNCE_RATE=0.10
+PAUSE_DAYS=3
+SEND_WINDOW=9-17
+DOMAIN_DAILY_CAP=10
 ```
+
+The last nine are T22 (D64–D70). With `DELIVERABILITY=off` the other eight are still validated but nothing uses them.
 
 The system must run end to end with `OPENROUTER_API_KEY` empty: every AI step falls back (hand-written templates, rule-only classification, `needs_review`). An evaluator without a key still gets a working run.
 
@@ -104,7 +115,16 @@ mock_inbox    id · idempotency_key · body · headers jsonb · true_label · de
 
 llm_cache     key PK · kind ('sequence'|'classification') · response jsonb · model · created_at
 llm_usage     day date PK (real day) · calls int
+
+-- T22, migration 003 (D66–D70)
+mailboxes       id int PK · address text UNIQUE · created_at timestamptz · warmup_started_at timestamptz · paused_until timestamptz NULL
+mailbox_pauses  id serial · mailbox_id FK · paused_at · resume_at · bounce_rate real · sample int
+contacts        + mailbox_id int NULL FK mailboxes   (set by the first engine send with deliverability on)
+sends           + mailbox_id int NULL FK mailboxes · recipient_domain text NULL · headers jsonb NOT NULL DEFAULT '{}'
+                INDEX (mailbox_id, sent_at) and (recipient_domain, sent_at), both WHERE mailbox_id IS NOT NULL
 ```
+
+An "engine send with deliverability on" is a `sends` row with `mailbox_id` not null.
 
 ### Event types (the only values of `events.type`)
 
@@ -224,7 +244,13 @@ Each task has its own file `tasks/T0x-*.md`, written by the harness engineer wit
 
 ### Layer 7 — Bonus and delivery
 
-**T22 Bonus** (only after T20 is green): mailboxes with ramping daily limits and auto-pause on bounce rate, sending windows by prospect timezone, per-domain caps, `List-Unsubscribe` header and unsubscribe link in rendered emails.
+**T22 Bonus** (only after T20 is green): mailboxes with ramping daily limits and auto-pause on bounce rate, sending windows by prospect timezone, per-domain caps, `List-Unsubscribe` header and unsubscribe link in rendered emails. Behind `DELIVERABILITY` (D64); a day becomes 24 hourly ticks (D65); details in `tasks/T22-deliverability.md`. `checkInvariants(db, limit, delivery)` adds invariants 8–12 when given the delivery settings:
+
+8. No mailbox sends more on a UTC day than its warm-up limit for that day.
+9. No recipient domain gets more than `DOMAIN_DAILY_CAP` engine sends on a UTC day.
+10. Every engine send happened inside the contact's local send window (Mon–Fri, `SEND_WINDOW`).
+11. No engine send from a mailbox after it paused and before it resumed.
+12. Every engine send has the `List-Unsubscribe` and `List-Unsubscribe-Post` headers for its contact, and its body ends with the unsubscribe link.
 
 **T23 README.** The 7 sections the PDF asks for, measured numbers from T20, and a clean-clone run-through that was actually done.
 

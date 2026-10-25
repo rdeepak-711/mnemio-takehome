@@ -94,7 +94,7 @@ describe('upgrading a database made before the ai schema', () => {
     );
     await pool.query(`INSERT INTO public.llm_usage (day, calls) VALUES ('2026-10-23', 3)`);
 
-    expect(await migrate(pool)).toEqual(['002_ai_schema.sql']);
+    expect(await migrate(pool)).toEqual(['002_ai_schema.sql', '003_deliverability.sql']);
     expect(await n(`SELECT count(*) FROM ai.llm_cache WHERE key = 'old'`)).toBe(1);
     expect(await n(`SELECT calls FROM ai.llm_usage WHERE day = '2026-10-23'`)).toBe(3);
     expect(
