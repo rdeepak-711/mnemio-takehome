@@ -63,6 +63,12 @@ describe('GET /api/delivery', () => {
     expect(body.day).toBe(rows[0]!.day);
   });
 
+  it('includes the sim clock, so the page can grey out the hours not simulated yet', async () => {
+    const { rows } = await pool.query<{ now: Date }>('SELECT now FROM sim_clock');
+    const body = await (await delivery(get('/api/delivery'))).json();
+    expect(body.clock).toBe(rows[0]!.now.toISOString());
+  });
+
   it.each(['2026-13-01', 'yesterday', '2026-02-30'])('day=%s is a 400 naming day', async (day) => {
     const res = await delivery(get(`/api/delivery?day=${day}`));
     expect(res.status).toBe(400);

@@ -1253,3 +1253,252 @@ h3 {
 .mono {
   font-family: var(--mono);
 }
+
+/* T22b: deliverability (D71). Bounces use the existing --c-bounce. */
+.kpis-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.kpis-4 .kpi-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mailbox tiles: 10 across, 5 on a phone. */
+.mb-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 8px;
+}
+.mb-tile {
+  min-width: 0;
+}
+.mb-inner {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.mb-paused .mb-inner {
+  border-color: var(--danger);
+}
+.mb-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.mb-track {
+  position: relative;
+  width: 14px;
+  height: 46px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.mb-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--accent);
+  transform-origin: bottom;
+  display: flex;
+  flex-direction: column;
+}
+.mb-bounce {
+  display: block;
+  width: 100%;
+  background: var(--c-bounce);
+}
+.mb-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.mb-flag {
+  font-size: 10.5px;
+  color: var(--danger);
+  line-height: 1;
+  min-height: 1em;
+}
+/* The address stays on one line on a wide screen; on a phone the table is cards and it wraps. */
+.pauses th:nth-child(3) {
+  text-align: left; /* "Back at" is a time like "Paused at", not a number */
+}
+.pauses td.email {
+  white-space: nowrap;
+  word-break: normal;
+}
+
+/* The send strip: the only thing on the page that scrolls sideways, inside its own card. */
+.strip-scroll {
+  overflow-x: auto;
+}
+.strip {
+  display: block;
+  width: 100%;
+  min-width: 760px;
+  height: auto;
+}
+.strip text {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--muted);
+}
+.strip .strip-lane {
+  font-family: var(--sans);
+  font-size: 11.5px;
+  fill: var(--text);
+}
+.strip-bank rect {
+  fill: var(--panel-2);
+  stroke: var(--line-strong);
+}
+.strip-bank text {
+  fill: var(--faint);
+}
+.strip-cell {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 0.5;
+}
+.strip-cell-on {
+  stroke: var(--line-strong);
+}
+.strip-cell:hover {
+  stroke: var(--accent);
+}
+.strip-future rect {
+  fill: var(--bg);
+  opacity: 0.72;
+}
+.strip-future text {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.strip-playhead {
+  stroke: var(--warn);
+  stroke-width: 1.5;
+}
+.strip-caption {
+  margin-top: 10px;
+}
+
+/* Domains against the cap */
+.domains {
+  max-width: 760px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.domain-row {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.domain-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.domain-track {
+  position: relative;
+  display: block;
+  height: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.domain-track::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: var(--cap-at);
+  border-left: 1.5px dashed var(--warn);
+}
+.domain-fill {
+  display: block;
+  height: 100%;
+  background: var(--c-first);
+  border-radius: 2px;
+}
+.domain-count {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.sw-cap {
+  width: 0;
+  height: 12px;
+  border-left: 1.5px dashed var(--warn);
+  border-radius: 0;
+}
+
+/* Overview card */
+.dlv-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.dlv-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 14px;
+  margin: 0;
+  font-size: 13.5px;
+}
+.dlv-facts dt {
+  color: var(--muted);
+}
+.dlv-facts dd {
+  margin: 0;
+  font-family: var(--mono);
+}
+.dlv-spark {
+  margin: 0;
+}
+.spark {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.spark rect {
+  fill: var(--accent);
+}
+.spark line {
+  stroke: var(--line-strong);
+}
+
+@media (max-width: 720px) {
+  .kpis-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mb-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .domain-row {
+    grid-template-columns: minmax(0, 120px) minmax(0, 1fr) 32px;
+    gap: 8px;
+  }
+  .pauses td.email {
+    white-space: normal;
+    word-break: break-all;
+  }
+}

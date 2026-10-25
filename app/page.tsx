@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Status } from '../src/lifecycle';
 import type { ActivityPage } from '../src/web/activity';
 import type { ClassifierStats } from '../src/web/classifier';
+import type { DeliveryDay } from '../src/web/delivery';
 import type { CampaignDays, Summary } from '../src/web/summary';
 import type { TimelineDay } from '../src/web/timeline';
 import { useFlash } from './_anim/motion';
@@ -13,6 +14,7 @@ import { fmtInt } from './_components/api';
 import { ActivityList } from './_components/ActivityList';
 import { ClassifierBars } from './_components/ClassifierBars';
 import { DaySlider } from './_components/DaySlider';
+import { DeliveryCard } from './_components/DeliveryCard';
 import { Funnel } from './_components/Funnel';
 import { Kpis } from './_components/Kpis';
 import { useSim } from './_components/sim';
@@ -23,7 +25,8 @@ import { useApi } from './_components/useApi';
 const FEED_ROWS = 8;
 
 // Overview: KPIs, the day slider, the funnel (a bar opens who is in that stage), the daily activity chart, the
-// classifier card and the day's first events. Every number comes from the API; nothing is computed here beyond layout.
+// classifier card, the day's first events and its deliverability card. Every number comes from the API; nothing is
+// computed here beyond layout.
 export default function OverviewPage() {
   const { version } = useSim();
   const [day, setDay] = useState<string | null>(null); // null: the sim clock's day
@@ -44,6 +47,7 @@ export default function OverviewPage() {
 
   const classifier = useApi<ClassifierStats>('/api/classifier', version);
   const feed = useApi<ActivityPage>(s ? `/api/activity?day=${s.day}` : null, version);
+  const delivery = useApi<DeliveryDay>(s ? `/api/delivery?day=${s.day}` : null, version);
 
   // The drill-down keeps the day it was opened on, even if the slider moves underneath it.
   const [stage, setStage] = useState<{ day: string; status: Status } | null>(null);
@@ -165,6 +169,10 @@ export default function OverviewPage() {
           )}
           {feed.data && feed.error ? <Failed error={feed.error} /> : null}
         </section>
+      </div>
+
+      <div className="section">
+        <DeliveryCard state={delivery} />
       </div>
 
       {stage && <StagePanel day={stage.day} status={stage.status} onClose={closeStage} />}

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-// The six sections of the brief, in its order.
+// The six sections of the brief, in its order, then deliverability (T22b, D71).
 const LINKS = [
   { href: '/', label: 'Overview' },
   { href: '/timeline', label: 'Campaign Timeline' },
@@ -11,6 +11,7 @@ const LINKS = [
   { href: '/classifier', label: 'AI Classifier' },
   { href: '/contacts', label: 'Contacts' },
   { href: '/activity', label: 'Activity Log' },
+  { href: '/deliverability', label: 'Deliverability' },
 ];
 
 export function Nav() {
