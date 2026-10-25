@@ -410,3 +410,13 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Considered:** a queue of control requests; letting parallel advances run (the engine is safe under concurrency, D03, but two clicks would move the clock two days when the user meant one); running the CLI as a child process from the route.
 **Why:** the engine already guarantees correctness under parallel workers, so the lock is about meaning, not safety: one click, one action. Calling the functions directly keeps one code path with the CLI and returns structured summaries instead of parsed text.
 **Cost:** the lock is per server process; `npm run advance` in a terminal while the dashboard advances still runs (safely, D03), and the dashboard shows its effect after the next refetch. Advancing 7 days on 10,000 contacts takes about 10 s with a warm cache (T20 measured 54 s for 40 days), and the request is held open that long.
+
+## D59 · 2026-10-25 · `MIGRATIONS_DIR` is built with `path`, not `new URL('./migrations/', import.meta.url)`
+
+**Decided:** `src/db/migrate.ts` builds the migrations folder path as `join(dirname(fileURLToPath(import.meta.url)), 'migrations')`. This is the one change outside T21a's file list, found by the builder and applied by the harness.
+
+**Considered:** keeping `new URL(...)` and configuring Next around it (`serverExternalPackages` only covers packages in `node_modules`; `turbopack.ignoreIssue` would hide the error and leave a broken module at runtime); moving the reset route into a child process that runs `tsx`.
+
+**Why:** Next's bundler (Turbopack) treats `new URL('<relative>', import.meta.url)` as an asset import and cannot resolve a folder, so the production build failed as soon as `app/api/sim/*` reached `src/web/sim.ts` → `src/db/migrate.ts`. The `path` form gives the same absolute path under `tsx`, Vitest and Next, and every existing test that uses `MIGRATIONS_DIR` still passes.
+
+**Cost:** Next warns that the `readdir` in `migrate()` makes it trace the whole project into the server output. That only matters for a deployed build, which this take-home doesn't have; it can be silenced with a `/*turbopackIgnore: true*/` hint later.
