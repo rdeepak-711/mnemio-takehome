@@ -40,7 +40,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 - 🗣 T20 Full 10k run, timed
 
 ## Layer 6 — Dashboard
-- 🧪 T21a Core dashboard (KPIs, day slider + funnel, journey, contacts, controls)
+- 🗣 T21a Core dashboard (KPIs, day slider + funnel, journey, contacts, controls)
 - ☐ T21b Extras (classifier view, activity log, play/pause)
 
 ## Layer 7 — Bonus and delivery
