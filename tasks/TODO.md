@@ -41,7 +41,7 @@ Target (Deepak, 22 Oct, corrected): **everything, dashboard included, finished a
 
 ## Layer 6 — Dashboard
 - 🗣 T21a Core dashboard (KPIs, day slider + funnel, journey, contacts, controls)
-- ☐ T21b Extras (classifier view, activity log, play/pause)
+- 🧪 T21b Extras (classifier view, activity log, play/pause)
 
 ## Layer 7 — Bonus and delivery
 - ☐ T22 Bonus: mailboxes + warm-up, auto-pause, timezone windows, domain caps, List-Unsubscribe

@@ -420,3 +420,43 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Why:** Next's bundler (Turbopack) treats `new URL('<relative>', import.meta.url)` as an asset import and cannot resolve a folder, so the production build failed as soon as `app/api/sim/*` reached `src/web/sim.ts` → `src/db/migrate.ts`. The `path` form gives the same absolute path under `tsx`, Vitest and Next, and every existing test that uses `MIGRATIONS_DIR` still passes.
 
 **Cost:** Next warns that the `readdir` in `migrate()` makes it trace the whole project into the server output. That only matters for a deployed build, which this take-home doesn't have; it can be silenced with a `/*turbopackIgnore: true*/` hint later.
+
+## D60 · 2026-10-25 · The AI classifier view scores the engine's labels only, by the report's rules
+
+**Decided:** `/classifier` (and `GET /api/classifier`) covers replies labelled at or after `SIM_START` (`classified_at >= simStart`), the same scope and definitions as the report's classifier line (D54). It shows counts per predicted label (the four reply labels plus `needs_review`, shown as "uncertain, needs review"), the split by label source (rule, AI, fallback), accuracy per source against the mock's true label (`label = true_label`), a true-label × predicted-label table, the number still unlabelled, the number of seeded replies left out, and up to 3 example replies per predicted label, newest classification first. The "explanation" shown for a reply is its label source in words (a rule matched, the AI answered, the fallback was used because the AI gave no answer); the engine stores nothing else about why.
+
+**Considered:** including the seeded replies (the seed writes the correct label in, so accuracy would look perfect); a day filter (the slider already covers time on the other pages, and labels don't change after they're written); asking the AI for an explanation per reply (costs free-tier calls for display only, and would be a new claim the engine never made).
+
+**Why:** the view's job is to show how well the system's own sorting worked. Using the report's scope means the page and `npm run report` give the same numbers, which a test checks.
+
+**Cost:** no per-reply reasoning text. A reviewer sees which mechanism labelled a reply, not why that mechanism chose the label.
+
+## D61 · 2026-10-25 · The activity log shows one row per happening, with descriptions built only from stored event data
+
+**Decided:** `/activity` (and `GET /api/activity?kind=&q=&day=&page=`) lists `events` newest first, 50 per page, joined to the contact's name and email. Each event gets a kind from its stored data: `sent` (a `sent` event with outcome accepted), `bounced` (a `sent` event with outcome bounced), `reply` (`reply_received`, any label but unsubscribe), `unsubscribed` (`reply_received` labelled unsubscribe), `rescheduled`, `deactivated` (`status_changed` with reason `deactivate_due`) and `suppressed` (`status_changed` with reason `suppressed`). The `status_changed` events whose reason is `sent`, `bounced`, `reply` or `unsubscribe` are never listed, because each one repeats the send or reply event written in the same transaction. `describeActivity(kind, data)` turns the stored fields into one sentence, with nothing added. Filters: kind, contact search (name, email, company, as on the contacts page) and one day. The overview shows the first 8 rows for the selected day.
+
+**Considered:** listing every event (each send and each reply would appear twice, once as itself and once as a status change); building descriptions in the browser (the same rules would then live in two places); cursor paging (offset paging is fast enough on 83,000 events and matches the contacts page).
+
+**Why:** the brief's feed is "email sent, follow-up rescheduled, reply received and classified, bounced, unsubscribe received, deactivated", one line each. Every one of those has exactly one event that already holds the facts.
+
+**Cost:** a filter on kind computes the kind for every event in the range; on the 10k run that is tens of milliseconds, measured at review.
+
+## D62 · 2026-10-25 · Stage drill-down lists who was in a stage at the end of a day, by the same rule as the funnel
+
+**Decided:** clicking a funnel bar or a journey stage opens a list from `GET /api/stage?day=&status=&page=` (`stageAt` in `src/web/stage.ts`): the contacts whose rebuilt status at the end of that day (D57) is that status, 50 per page, each with when they entered it, from which status and why (the `status_changed` event's `from` and `reason`; `null` for a contact still `new` with no events). Sorted by most recent entry first; contacts with no entry (still `new`) last, by id. Its `total` equals the funnel's count for that status on that day, which a test checks for every status.
+
+**Considered:** linking to `/contacts?status=X` (only right for today, because `contacts.status` is today's status); listing contacts without the reason (the brief asks to show why contacts stopped).
+
+**Why:** "selecting a stage should reveal the number of contacts and their relevant details" for the day on screen, not for today.
+
+**Cost:** one more `DISTINCT ON` pass per request (the same query shape as the funnel, under 30 ms on the 10k run).
+
+## D63 · 2026-10-25 · Play runs one day per request from the browser and stops on its own
+
+**Decided:** Play repeatedly sends `POST /api/sim/advance {"days":1}`, waits for the answer and the refetch, then waits a pause set by the speed (1× = 1,500 ms, 2× = 600 ms, 4× = 150 ms) before the next day. It stops when Pause is pressed (after the day in progress finishes), when a request fails (including a 409 from another control), when a day returns invariant violations, or when nobody is left in sequence (`active = 0`, the same stop rule as the full run, D55). While playing, every control except Pause and the speed is disabled. The pause lengths and the stop rule are pure functions in `src/web/play.ts` so they are tested.
+
+**Considered:** a server-side loop or timer (state outside the database, and a background job that keeps running when the tab closes); advancing several days per request at higher speeds (fewer refetches, but the screen would skip days).
+
+**Why:** each day stays one engine call through the same lock as the buttons (D58), the screen shows every day, and closing the tab stops the run.
+
+**Cost:** the speed is a pause between days, not a guarantee: a day that takes 2 seconds to tick still takes 2 seconds. With an AI key, playing spends the daily AI budget like `npm run advance` does.
