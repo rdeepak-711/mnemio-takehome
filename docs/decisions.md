@@ -489,7 +489,7 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 
 **Why:** holding the mailbox row for the whole batch makes the count exact, a transaction never waits for a second mailbox so it cannot deadlock, and parallel workers spread over different mailboxes.
 
-**Cost:** a batch is at most the mailbox's remaining capacity (80 or fewer, not 200), so there are more, smaller transactions. A contact whose mailbox is full or paused waits for it, even if another mailbox has room.
+**Cost:** a batch is at most the mailbox's remaining capacity (80 or fewer, not 200), so there are more, smaller transactions. A contact whose mailbox is full or paused waits for it, even if another mailbox has room. Found at the T22b review (25 Oct): the allowance resets at 00:00 UTC and new contacts fill the lowest-numbered mailbox first, so during warm-up the regions whose windows open first in the UTC day use the allowance first, and the low-numbered mailboxes fill while the high ones stay idle (`docs/findings.md`, T22b). Accepted for the simulation; a real sender would start each mailbox's day in its own timezone and spread new contacts over the mailboxes with the most room.
 
 ## D67 · 2026-10-25 · A mailbox pauses itself for 3 days when more than 10% of its last 100 sends bounced
 

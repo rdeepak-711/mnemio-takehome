@@ -136,6 +136,12 @@ Real cold email gets blocked when it looks like a machine blasting a list, so T2
 
 Two workers sending at once still can't overstep any limit. Each batch holds one mailbox for the whole batch, so nobody else can count or use that mailbox's sends until it is done; for a domain, the batch asks for a lock that never waits — if another batch has it, the contact simply waits for the next hour. Waiting locks would let two batches each hold one thing and wait for the other's forever (a deadlock); locks that never wait can't. Five new checks (invariants 8–12) prove after a run that no mailbox went over its limit, no domain over its cap, no email left outside a window, none from a paused mailbox, and none without its unsubscribe headers and link.
 
+## Seeing the careful sender at work (built in T22b)
+
+The **Deliverability** page shows one simulated day of T22's habits. The top row counts the day's emails against what the mailboxes were allowed (their warm-up limits added up), the bounces, how many mailboxes were paused at the end of the day, and the busiest company domain against its cap of 10. Below that, each of the 50 mailboxes is a small tile that fills up as it uses its allowance for the day, with bounces in red on top and a red border when it is paused. The centrepiece is the hour-by-hour strip: 24 columns for the 24 UTC hours and one row per part of the world (Americas, Europe, Asia, Australia). When a day plays, a line sweeps across the hours and each hour's emails fly out of the mailbox bank into their row as dots. One dot is a group of emails, and the legend says how many. Every dot stands for real rows in `sends`, so the picture can't show anything that didn't happen. On the clock's own day, the hours after the clock are greyed out as "not simulated yet", because each advance stops the clock at 09:00.
+
+A past day has to be rebuilt from history, not from today's settings. A mailbox's allowance for 4 November is worked out from when it was created and from the pauses recorded in `mailbox_pauses`, the same rule the checker uses, because the mailbox row only remembers its current warm-up start.
+
 ## Words used on this page
 
 - **Tick:** one pass of the system at the current simulated time: deliver replies, label them, deactivate, send.
