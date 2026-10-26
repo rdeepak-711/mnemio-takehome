@@ -550,3 +550,13 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 **Why:** a fixed share per hour is how sending tools pace a mailbox, it is one more count under the mailbox lock D66 already holds, and it also spreads new contacts over more mailboxes, because a mailbox that has used its hour stops taking them.
 
 **Cost:** while mailboxes warm up, fewer emails go out per day when only a few hours have due contacts in window, so the campaign takes more simulated days; the full run is re-measured in T23. With a 0–24 window the hourly share is daily ÷ 24.
+
+## D73 · 2026-10-26 · The live-run page is a day-by-day funnel of all nine statuses, drawn from the same frozen export
+
+**Decided:** `docs/campaign-live-run.html` was rebuilt around one SVG funnel: the five in-sequence statuses as a column of bars (length = share of all 10,000), the four outcomes as boxes beside it, and lines between them for the status changes of the selected day, labelled with the real counts from `events`. A sticky timeline (scrubber, play, keyboard, `#YYYY-MM-DD` hash) drives the funnel, the headline numbers, the three daily charts, the hour chart, and the example emails and replies together. Clicking a stage opens its rules from `transition()` and `WAIT_DAYS`. The embedded JSON is byte-for-byte the one in the first version (sha1 `8be01419…`), so no number changed.
+
+**Considered:** keeping the first version (a status table and stacked bars per day, which answered "how many" but not "who moved where"); a full Sankey across all 44 days (unreadable at 9 nodes × 44 columns); animating individual dots as people (would imply a count per dot that is not true at this scale).
+
+**Why:** the reviewer's question is "what happened to the 10,000"; the funnel answers it on every day, and a browser check confirms every day's nine counts sum to 10,000 and each day's changes equal that day's moves.
+
+**Cost:** the page is now ~1,000 lines of hand-written JS with no tests in the repo; it was checked with a headless-browser script outside the repo (desktop, tablet, phone, light, dark, reduced motion). Moving dots only show direction.
