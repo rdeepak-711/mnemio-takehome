@@ -555,7 +555,7 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 
 **Decided:** `docs/campaign-live-run.html` is cut down to one question: what the engine sent and where the 10,000 people ended up on each day. It has a day slider with play, three numbers (emails sent, share of the mailbox limit used, people still in the sequence), a funnel of the nine statuses with that day's real moves, emails per day against the mailboxes' combined limit, the day hour by hour, the four sending rules in one line each, and one real email per step. The embedded JSON is byte-for-byte the first version's (sha1 `8be01419…`), so no number changed.
 
-**Considered:** a richer version with reply cards, AI accuracy, the confusion table, the 20 sequences, rule drawers and a methodology section (built and committed as f1880ef, then reverted the same day: Deepak found it "too much text and too much info"); the first version's tables per day (answered "how many" but not "who moved where").
+**Considered:** a richer version with reply cards, AI accuracy, the confusion table, the 20 sequences, rule drawers and a methodology section (built and committed as f1880ef, then replaced the same day: Deepak found it "too much text and too much info"); the first version's tables per day (answered "how many" but not "who moved where").
 
 **Why:** the page exists to show the sending engine working; the AI and classifier numbers already live in the README and the dashboard.
 
