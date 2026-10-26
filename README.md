@@ -2,7 +2,7 @@
 
 A cold-email outreach engine for 10,000 prospects: a four-email sequence per prospect on a simulated clock, Postgres as both database and work queue, 50 warming-up mailboxes with sending rules, AI-written emails and AI-read replies on OpenRouter's free models, and a Next.js dashboard.
 
-**See it first:** [`docs/campaign-live-run.html`](docs/campaign-live-run.html) is one full 10,000-prospect run with a live OpenRouter key, day by day. Open it from disk or on the live link below: drag the slider or press Play and watch where everyone goes, how the mailboxes pace the day, and the emails that went out. (Live link: _to be added after the Vercel deploy_.)
+**See it first: https://mnemio-campaign-run.vercel.app** shows one full 10,000-prospect run with a live OpenRouter key, day by day. Drag the slider or press Play and watch where everyone goes, how the mailboxes pace the day, and the emails that went out. The same page is [`docs/campaign-live-run.html`](docs/campaign-live-run.html), which opens straight from disk.
 
 ## 1. What the system does
 
