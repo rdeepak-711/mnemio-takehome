@@ -1,5 +1,9 @@
 # Mnemio cold-email engine
 
+A cold-email outreach engine for 10,000 prospects: a four-email sequence per prospect on a simulated clock, Postgres as both database and work queue, 50 warming-up mailboxes with sending rules, AI-written emails and AI-read replies on OpenRouter's free models, and a Next.js dashboard.
+
+**See it first:** [`docs/campaign-live-run.html`](docs/campaign-live-run.html) is one full 10,000-prospect run with a live OpenRouter key, day by day. Open it from disk or on the live link below: drag the slider or press Play and watch where everyone goes, how the mailboxes pace the day, and the emails that went out. (Live link: _to be added after the Vercel deploy_.)
+
 ## 1. What the system does
 
 A sales team emails 10,000 prospects: a first email and up to three follow-ups each, a few days apart. This system keeps one record per prospect saying where they are in that sequence and when their next email is due. Each simulated hour it picks up everyone who is due, writes their email, hands it to a mock email provider, records what happened and books the next step. A reply, bounce or unsubscribe ends the sequence; if nobody answers the last follow-up within its wait, the prospect is deactivated. Sending behaves like a careful human sender: 50 warming-up mailboxes, the prospect's working hours, a cap per company domain, a pause for a mailbox that bounces too much, and unsubscribe headers. Emails are never sent for real, time is simulated so six weeks play out in under two minutes, the AI comes from OpenRouter's free models, and a dashboard shows it all as it happens.
@@ -62,7 +66,7 @@ app/ (dashboard)   ─┼─► src/engine/tick.ts ┼─ src/engine/deactivate.
 - **Vitest against a real Postgres** (`mnemio_test`), because the guarantees that matter (locks, unique keys, crash recovery) only exist in the database.
 - **Next.js 16 + React 19** for the dashboard, with Anime.js for the animations. The routes only parse and call `src/web/`; there is no SQL in `app/`.
 
-Every choice, with what else was considered and what it costs, is in [`docs/decisions.md`](docs/decisions.md) (D01–D72).
+Every choice, with what else was considered and what it costs, is in [`docs/decisions.md`](docs/decisions.md) (D01–D73).
 
 | Table | Holds |
 |---|---|
@@ -159,7 +163,7 @@ The same command on a fresh scratch database with a key took 820.2 s: 678.3 s fo
 - **Replies:** the rules labelled 640 replies, all correct. The AI labelled 1,465, and 1,314 of those (89.7%) matched the mock's true label. The other 151 were held as `needs_review` rather than guessed wrong.
 - **Final counts:** 1,891 replied, 454 bounced, 503 unsubscribed and 7,152 deactivated. The reply rate (28.8%) and bounce rate (1.3%) are the same as without a key.
 
-[`docs/campaign-live-run.html`](docs/campaign-live-run.html) shows this run day by day. It has a slider, the funnel, sends and replies per day, and the real emails and replies with their labels. It opens straight from disk.
+[`docs/campaign-live-run.html`](docs/campaign-live-run.html) shows this run day by day: a slider with Play, the three numbers for the day (emails sent, share of the mailbox limit used, prospects still in sequence), an animated funnel of the nine statuses with that day's real moves between them, emails per day against the mailboxes' combined limit, the day hour by hour, the four sending rules, and one real email per step (click a step in the funnel to see its email). Every number comes from one frozen export of the run, embedded in the file, so it opens straight from disk and connects to nothing. A headless-browser check confirmed that on all 44 days the nine counts match the export and sum to 10,000.
 
 ## 7. Trade-offs, limitations and what's next
 
@@ -207,4 +211,6 @@ Every number is rebuilt from the database for the end of the selected simulated 
 - [`docs/flow.md`](docs/flow.md): which function calls which, file by file.
 - [`docs/decisions.md`](docs/decisions.md): every decision with its alternatives and cost.
 - [`docs/findings.md`](docs/findings.md): measurements and live AI results.
+- [`docs/try-it.md`](docs/try-it.md): a step-by-step tour of the CLI and dashboard.
+- [`docs/campaign-live-run.html`](docs/campaign-live-run.html): the live-key run, day by day.
 - [`spec/site.md`](spec/site.md) and [`tasks/`](tasks/): the spec and each task's contract.
