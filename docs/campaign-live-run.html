@@ -66,6 +66,7 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--accent); 
 .funnel-panel { padding: 22px 20px 18px; }
 #funnel { display: block; max-width: 100%; overflow: visible; }
 .f-name { fill: var(--text-2); font-size: 13px; font-weight: 500; }
+.f-name.sm { font-size: 11.5px; }
 .f-count { fill: var(--text); font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .f-count.sm { font-size: 17px; }
 .f-delta { fill: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -74,6 +75,10 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--accent); 
 .f-neck { opacity: .18; }
 .f-box { fill: var(--surface); stroke: var(--line); }
 .f-chip rect { fill: var(--surface); stroke: var(--line); }
+.f-hit { fill: transparent; cursor: pointer; transition: fill-opacity 150ms; }
+.f-hit:hover { fill: var(--accent); fill-opacity: .06; }
+.f-hit.sel { fill: var(--accent); fill-opacity: .09; }
+.flow-label { font-size: 11.5px; font-weight: 500; fill: var(--text-2); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; }
 .f-chip text { fill: var(--text-2); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .f-chip { transition: opacity 250ms; }
 .flow { fill: none; stroke-linecap: round; opacity: .42; }
@@ -130,7 +135,7 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--accent); 
   <header class="top">
     <div>
       <h1>10,000 prospects · 4 emails each · 50 mailboxes</h1>
-      <p class="sub">One full run of the Mnemio outreach engine, day by day. Nothing was really sent: a mock provider decides bounces and replies.</p>
+      <p class="sub">A real run of the engine: 10,000 seeded prospects, a live OpenRouter key, exported from Postgres. No email actually left the machine; a mock provider decides bounces and replies.</p>
     </div>
     <a class="gh" href="https://github.com/rdeepak-711/mnemio-takehome" target="_blank" rel="noopener">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -149,7 +154,7 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--accent); 
   </div>
 
   <div class="panel stats">
-    <div class="stat"><b class="num" id="s-sent">0</b><span>emails sent</span></div>
+    <div class="stat"><b class="num" id="s-sent">0</b><span id="s-sent-l">emails sent</span></div>
     <div class="stat"><b class="num" id="s-cap">0%</b><span>of mailbox limit used</span></div>
     <div class="stat"><b class="num" id="s-active">0</b><span>still in sequence</span></div>
   </div>
@@ -157,7 +162,7 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--accent); 
   <section class="panel funnel-panel" aria-labelledby="h-f">
     <h2 id="h-f">Where everyone is at the end of the day</h2>
     <svg id="funnel" role="img" aria-label="Funnel of prospect statuses for the selected day"></svg>
-    <p class="funnel-note">Bar size = share of all 10,000. Arrows and lines carry the people who moved that day; the dots only show direction.</p>
+    <p class="funnel-note">Bar size = share of all 10,000. Arrows and lines carry the people who moved that day; the dots only show direction. Click a step to see the email it sent that day.</p>
   </section>
 
   <div class="two">
@@ -186,7 +191,7 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--accent); 
     <div id="email"></div>
   </section>
 
-  <p class="foot">Data: one <span class="mono">npm run full-run</span> on 10,000 seeded prospects with a live OpenRouter key (free models), exported from Postgres. Code: <a href="https://github.com/rdeepak-711/mnemio-takehome" target="_blank" rel="noopener">github.com/rdeepak-711/mnemio-takehome</a></p>
+  <p class="foot">Data: one <span class="mono">npm run full-run</span> on 25 Oct 2026, free OpenRouter models. Code: <a href="https://github.com/rdeepak-711/mnemio-takehome" target="_blank" rel="noopener">github.com/rdeepak-711/mnemio-takehome</a></p>
 </div>
 <div class="tip" id="tip" role="status"></div>
 
@@ -283,9 +288,10 @@ function buildFunnel() {
   let H;
   F.W = W; F.wide = wide;
   if (wide) {
-    const step = W / 5, bw = Math.min(150, step * 0.5), top = 78, maxH = Math.min(260, W * 0.2), mid = top + maxH / 2;
+    const top = 78, maxH = Math.min(260, W * 0.2), mid = top + maxH / 2;
     const boxY = top + maxH + 96, boxH = 78, gap = 14, boxW = (W - 3 * gap) / 4;
-    F.cols = IN.map((s, i) => ({ cx: step * (i + 0.5), bw }));
+    F.wcur = F.wcur || IN.map(() => 1);
+    F.cols = layoutCols(F.wcur);
     F.boxes = OUT.map((s, i) => ({ x: i * (boxW + gap), y: boxY, w: boxW, h: boxH }));
     Object.assign(F, { top, maxH, mid });
     H = boxY + boxH + 4;
@@ -298,7 +304,7 @@ function buildFunnel() {
     H = F.boxes[3].y + F.boxes[3].h + 4;
   }
   fsvg.setAttribute('viewBox', `0 0 ${W} ${H}`); fsvg.setAttribute('width', W); fsvg.setAttribute('height', H);
-  const gFlow = el('g', {}, fsvg), gNeck = el('g', {}, fsvg), gBar = el('g', {}, fsvg), gDot = el('g', {}, fsvg), gChip = el('g', {}, fsvg);
+  const gFlow = el('g', {}, fsvg), gNeck = el('g', {}, fsvg), gBar = el('g', {}, fsvg), gDot = el('g', {}, fsvg), gChip = el('g', {}, fsvg), gHit = el('g', {}, fsvg); // hits last, so clicks land on them
   F.gDot = gDot;
   F.necks = [0, 1, 2, 3].map((i) => el('path', { class: 'f-neck', fill: `var(${IN[i + 1][2]})` }, gNeck));
   F.chips = [0, 1, 2, 3].map((i) => { const g = el('g', { class: 'f-chip', style: 'opacity:0' }, gChip); return { g, r: el('rect', { height: 20, rx: 10 }, g), t: el('text', { 'text-anchor': 'middle' }, g), key: IN[i][0] + '>' + IN[i + 1][0] }; });
@@ -307,13 +313,15 @@ function buildFunnel() {
     const n = (F.nodes[k] = { i });
     if (wide) {
       const c = F.cols[i];
-      el('rect', { class: 'f-track', x: c.cx - c.bw / 2, y: F.top, width: c.bw, height: F.maxH, rx: 8 }, gBar);
+      n.hit = el('rect', { class: 'f-hit', x: c.x, y: 0, width: c.w, height: F.top + F.maxH + 6, rx: 10 }, gHit);
+      n.track = el('rect', { class: 'f-track', x: c.cx - c.bw / 2, y: F.top, width: c.bw, height: F.maxH, rx: 8 }, gBar);
       n.bar = el('rect', { rx: 8, fill: `var(${color})`, x: c.cx - c.bw / 2, width: c.bw }, gBar);
-      el('text', { class: 'f-name', x: c.cx, y: 14, 'text-anchor': 'middle' }, gBar).textContent = name;
+      n.name = el('text', { class: 'f-name', x: c.cx, y: 14, 'text-anchor': 'middle' }, gBar); n.name.textContent = name;
       n.count = el('text', { class: 'f-count', x: c.cx, y: 42, 'text-anchor': 'middle' }, gBar);
       n.delta = el('text', { class: 'f-delta', x: c.cx, y: 61, 'text-anchor': 'middle' }, gBar);
     } else {
       const r = F.rows[i];
+      n.hit = el('rect', { class: 'f-hit', x: 0, y: r.y - 4, width: W, height: r.h + 8, rx: 8 }, gHit);
       el('rect', { class: 'f-track', x: F.colX, y: r.y, width: F.colW, height: r.h, rx: 6 }, gBar);
       n.bar = el('rect', { rx: 6, fill: `var(${color})`, y: r.y, height: r.h }, gBar);
       el('text', { class: 'f-name', x: F.labelW, y: r.y + 13, 'text-anchor': 'end' }, gBar).textContent = name;
@@ -340,11 +348,25 @@ function buildFunnel() {
       if (F.nodes[from]?.i === undefined || !F.nodes[to]?.b) continue;
       const path = el('path', { class: 'flow', stroke: `var(${COLOR[to]})`, pathLength: 1, 'stroke-dasharray': '1 1', 'stroke-dashoffset': 1 }, gFlow);
       const title = el('title', {}, path);
-      F.flows[key] = { from, to, path, title, n: 0 };
+      const label = el('text', { class: 'flow-label', 'text-anchor': 'middle' }, gChip);
+      F.flows[key] = { from, to, path, title, label, n: 0 };
     }
+  }
+  for (const [k] of IN) {
+    const n = F.nodes[k];
+    n.hit.addEventListener('click', () => showStepEmail(k));
+    const t = el('title', {}, n.hit); t.textContent = EMAIL_STEP[k] ? `Show the ${STEP[EMAIL_STEP[k]].toLowerCase()} sent this day` : 'Nothing has been sent to these prospects yet';
   }
   F.counts = null;
 }
+
+// Columns share the width by weight: a step nobody is in shrinks to a stub so the live part of the funnel gets the room.
+function layoutCols(w) {
+  const total = w.reduce((a, x) => a + x, 0); let x = 0;
+  return w.map((wi) => { const cw = (F.W * wi) / total, c = { x, w: cw, cx: x + cw / 2, bw: Math.min(150, cw * 0.55) }; x += cw; return c; });
+}
+const STUB = 0.36;
+const weightsFor = (target) => IN.map(([k]) => ((target[k] || 0) > 0 ? 1 : STUB));
 
 const share = (v) => v / TOTAL;
 function barGeom(k, v) {
@@ -356,14 +378,23 @@ function barGeom(k, v) {
 function flowD(f, c) {
   const g = barGeom(f.from, Math.max(c[f.from] || 0, 0)), b = F.nodes[f.to].b, i = F.nodes[f.from].i;
   const sx = g.x + g.w / 2 + (i - 2) * 6, sy = F.top + F.maxH + 2; // lines leave from the bottom edge of the step's column
-  const ex = b.x + b.w * (0.2 + 0.15 * i), ey = b.y - 2;
+  const ex = b.x + b.w * (0.12 + 0.18 * i), ey = b.y - 2;
+  f.end = { x: ex, y: ey };
   return `M${sx},${sy} C${sx},${sy + (ey - sy) * 0.55} ${ex},${ey - (ey - sy) * 0.45} ${ex},${ey}`;
 }
 
-function drawFunnel(c) {
+function drawFunnel(c, w) {
   F.counts = c;
-  IN.forEach(([k]) => {
+  if (F.wide) { F.wcur = w || F.wcur; F.cols = layoutCols(F.wcur); }
+  IN.forEach(([k], i) => {
     const n = F.nodes[k], g = barGeom(k, c[k] || 0), dv = F.delta[k] || 0;
+    if (F.wide) {
+      const col = F.cols[i];
+      n.hit.setAttribute('x', col.x); n.hit.setAttribute('width', col.w);
+      n.track.setAttribute('x', col.cx - col.bw / 2); n.track.setAttribute('width', col.bw);
+      for (const t of [n.name, n.count, n.delta]) t.setAttribute('x', col.cx);
+      n.name.setAttribute('class', 'f-name' + (col.w < 120 ? ' sm' : ''));
+    }
     n.bar.setAttribute('x', g.x); n.bar.setAttribute('y', g.y); n.bar.setAttribute('width', g.w); n.bar.setAttribute('height', g.h);
     n.count.textContent = fmt(c[k] || 0);
     n.delta.textContent = F.wide ? `${(100 * share(F.target[k])).toFixed(1)}%${dv ? ' · ' + signed(dv) + ' today' : ''}` : (dv ? signed(dv) : '');
@@ -396,7 +427,7 @@ function drawFunnel(c) {
     n.delta.setAttribute('class', 'f-delta' + (dv > 0 ? ' up' : ''));
     if (n.fill) n.fill.setAttribute('width', Math.max(0, (n.b.w - 8) * share(v)));
   });
-  for (const key in F.flows) { const f = F.flows[key]; f.path.setAttribute('d', flowD(f, c)); }
+  for (const key in F.flows) { const f = F.flows[key]; f.path.setAttribute('d', flowD(f, c)); f.label.setAttribute('x', f.end.x); f.label.setAttribute('y', f.end.y - 8); }
 }
 
 // lines that carry people today draw themselves in; the rest fade away
@@ -406,6 +437,7 @@ function updateFlows() {
     f.n = n;
     f.path.setAttribute('stroke-width', n ? Math.min(12, 1.5 + Math.sqrt(n) * 0.32) : 0.001);
     f.title.textContent = `${NAME[f.from]} → ${NAME[f.to]}: ${fmt(n)} today`;
+    f.label.textContent = n ? fmt(n) : '';
     if (!n) { f.path.setAttribute('stroke-dashoffset', 1); continue; }
     f.path.setAttribute('stroke-dashoffset', 0);
     if (!reduced() && !was && f.path.animate) f.path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 700, easing: 'cubic-bezier(.2,.7,.2,1)' });
@@ -415,12 +447,13 @@ function updateFlows() {
 function tween(target) {
   cancelAnimationFrame(F.raf);
   const from = F.counts || Object.fromEntries(ALL.map(([k]) => [k, 0]));
-  if (reduced()) { drawFunnel(target); return; }
+  const wFrom = F.wcur || IN.map(() => 1), wTo = weightsFor(target);
+  if (reduced()) { drawFunnel(target, wTo); return; }
   const t0 = performance.now(), dur = F.counts ? 600 : 1000;
   const frame = (t) => {
     const k = ease(Math.min(1, (t - t0) / dur)), c = {};
     for (const key in target) c[key] = from[key] + (target[key] - from[key]) * k;
-    drawFunnel(c);
+    drawFunnel(c, wFrom.map((a, i) => a + (wTo[i] - a) * k));
     if (k < 1) F.raf = requestAnimationFrame(frame);
   };
   F.raf = requestAnimationFrame(frame);
@@ -460,7 +493,7 @@ const shown = {};
 function countTo(id, to, format) {
   const node = $(id), from = shown[id] ?? 0;
   shown[id] = to;
-  if (reduced() || from === to) { node.textContent = format(to); return; }
+  if (reduced() || from === to || timer) { node.textContent = format(to); return; }
   const t0 = performance.now();
   const step = (t) => {
     if (shown[id] !== to) return;
@@ -472,7 +505,8 @@ function countTo(id, to, format) {
 }
 
 /* ---------- charts ---------- */
-const pick = (i) => { stop(); setDay(i); };
+let touched = false;
+const pick = (i) => { touched = true; stop(); setDay(i); };
 let daysChart;
 function buildDays(grow) {
   daysChart = bars($('daysChart'), {
@@ -495,12 +529,21 @@ function hours(p, grow) {
 
 /* ---------- example email ---------- */
 let step = null;
+const EMAIL_STEP = { first_sent: 'first', follow_up_1_sent: 'follow_up_1', follow_up_2_sent: 'follow_up_2', follow_up_3_sent: 'follow_up_3' };
+function markStep() { for (const k in EMAIL_STEP) F.nodes[k]?.hit.classList.toggle('sel', EMAIL_STEP[k] === step); }
+function showStepEmail(k) {
+  if (!EMAIL_STEP[k]) return;
+  step = EMAIL_STEP[k]; email(days[current]);
+  $('h-e').scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+}
 function email(p) {
   const list = p.emails;
+  markStep();
   if (!list.length) { $('tabs').innerHTML = ''; $('email').innerHTML = `<p class="empty">${isWeekend(p.day) ? 'Weekend: nothing is sent.' : 'Nothing was sent this day.'}</p>`; return; }
-  if (!list.some((e) => e.step === step)) step = list[0].step;
+  if (!step) step = list[0].step;
   $('tabs').innerHTML = list.length > 1 ? list.map((e) => `<button data-s="${e.step}" aria-pressed="${e.step === step}">${STEP[e.step]}</button>`).join('') : '';
   const e = list.find((x) => x.step === step);
+  if (!e) { $('email').innerHTML = `<p class="empty">No ${STEP[step].toLowerCase()} went out on ${longDate(p.day)}. The tabs show what did.</p>`; return; }
   const body = e.body.split('\n--\n')[0];
   const at = new Date(e.sentAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: e.timezone });
   $('email').innerHTML = `<div class="email"><div class="email-h"><b>${esc(e.subject)}</b>From <span class="mono">${esc(e.mailbox)}</span> to ${esc(e.firstName)} at ${esc(e.company)} · ${at} their time${e.outcome === 'bounced' ? ' · <span style="color:var(--st-bounced)">bounced</span>' : ''}</div><pre>${esc(body)}</pre></div>`;
@@ -517,6 +560,7 @@ function setDay(i, first) {
   const p = days[i], t = p.delivery.totals, sent = p.steps.reduce((a, s) => a + s.n, 0);
   $('daylabel').innerHTML = `${longDate(p.day)}<span>day ${i + 1} of ${days.length}${isWeekend(p.day) ? ' · weekend' : ''}</span>`;
   countTo('s-sent', sent, fmt);
+  $('s-sent-l').textContent = isWeekend(p.day) ? 'emails sent · weekend, every window closed' : 'emails sent';
   countTo('s-cap', t.capacity ? (100 * t.emails) / t.capacity : 0, (v) => Math.round(v) + '%');
   countTo('s-active', p.summary.active, fmt);
   F.moves = {}; F.delta = {};
@@ -538,7 +582,8 @@ function stop() { clearTimeout(timer); timer = null; $('play').textContent = '�
 function tick() { setDay(current + 1); if (current >= last) stop(); else timer = setTimeout(tick, 900); }
 $('play').addEventListener('click', () => {
   if (timer) { stop(); return; }
-  if (current >= last) setDay(0);
+  if (current >= last || !touched) setDay(0);
+  touched = true;
   $('play').textContent = '❚❚ Pause';
   timer = setTimeout(tick, 900);
 });
@@ -556,7 +601,7 @@ addEventListener('resize', () => {
   clearTimeout(rz);
   rz = setTimeout(() => {
     if (innerWidth === lastW) return; lastW = innerWidth;
-    buildDays(false); buildFunnel(); cancelAnimationFrame(F.raf); drawFunnel(F.target);
+    buildDays(false); buildFunnel(); cancelAnimationFrame(F.raf); drawFunnel(F.target, weightsFor(F.target));
     for (const k in F.flows) F.flows[k].n = 0;
     updateFlows(); runDots();
     daysChart.select(current); hours(days[current], false);
