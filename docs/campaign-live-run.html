@@ -2,118 +2,141 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Campaign Live Run</title>
-<meta name="description" content="One live run of the cold-email engine, day by day: where the 10,000 prospects are and how 50 mailboxes pace the emails.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mnemio Campaign Run</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="One live run of the Mnemio cold-email engine, day by day: where 10,000 prospects are and how 50 mailboxes pace the emails.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
+/* Layout: one column; the funnel runs the full width left to right (sequence steps), outcomes collect underneath. Light only, by request. */
 :root {
   color-scheme: light;
-  --bg: #f6f6f3; --surface: #fff; --surface-2: #efeeea; --line: #e4e3de;
-  --text: #111; --text-2: #55544f; --text-3: #8a8983; --accent: #2a78d6; --grid: #ebeae5;
-  --st-new: #86b6ef; --st-first: #5598e7; --st-fu1: #2a78d6; --st-fu2: #1c5cab; --st-fu3: #104281;
-  --st-replied: #1baf7a; --st-bounced: #e34948; --st-unsub: #eda100; --st-deact: #8a8984;
-  --c-first: #2a78d6; --c-follow: #eb6834; --weekend: rgb(0 0 0 / .035); --good: #006300;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #0f0f0e; --surface: #171716; --surface-2: #222220; --line: #2a2a28;
-    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86; --accent: #4f95ea; --grid: #262624;
-    --st-new: #9ec5f4; --st-first: #6da7ec; --st-fu1: #3987e5; --st-fu2: #256abf; --st-fu3: #184f95;
-    --st-replied: #199e70; --st-bounced: #e66767; --st-unsub: #c98500; --st-deact: #6f6e69;
-    --c-first: #3987e5; --c-follow: #d95926; --weekend: rgb(255 255 255 / .03); --good: #4cc24c;
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #0f0f0e; --surface: #171716; --surface-2: #222220; --line: #2a2a28;
-  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86; --accent: #4f95ea; --grid: #262624;
-  --st-new: #9ec5f4; --st-first: #6da7ec; --st-fu1: #3987e5; --st-fu2: #256abf; --st-fu3: #184f95;
-  --st-replied: #199e70; --st-bounced: #e66767; --st-unsub: #c98500; --st-deact: #6f6e69;
-  --c-first: #3987e5; --c-follow: #d95926; --weekend: rgb(255 255 255 / .03); --good: #4cc24c;
+  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #eef0f4; --line: #e2e5ea;
+  --text: #13161b; --text-2: #4b5260; --text-3: #8b919b; --accent: #2a78d6; --grid: #eceef2;
+  --st-new: #9cc3f2; --st-first: #5598e7; --st-fu1: #2a78d6; --st-fu2: #1c5cab; --st-fu3: #104281;
+  --st-replied: #1baf7a; --st-bounced: #e34948; --st-unsub: #eda100; --st-deact: #8a8f98;
+  --c-first: #2a78d6; --c-follow: #eb6834; --weekend: rgb(20 30 50 / .035); --good: #0b7a3b;
+  --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--text); font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px 64px; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+.wrap { max-width: 1280px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
 .num { font-variant-numeric: tabular-nums; }
-h1 { font-size: clamp(22px, 3vw, 28px); letter-spacing: -0.015em; margin: 32px 0 4px; line-height: 1.2; }
-h2 { font-size: 16px; margin: 0 0 12px; }
-.sub { color: var(--text-3); font-size: 14px; margin: 0; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-top: 16px; }
-button { font: inherit; font-size: 13px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+.mono { font-family: var(--mono); font-size: .92em; }
+h1 { font-size: clamp(22px, 3vw, 30px); font-weight: 650; letter-spacing: -0.02em; margin: 0; line-height: 1.2; text-wrap: balance; }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+.sub { color: var(--text-2); font-size: 14.5px; margin: 6px 0 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-top: 16px; }
+button { font: inherit; font-size: 13px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 6px 12px; cursor: pointer; transition: border-color 150ms, transform 150ms; }
 button:hover { border-color: var(--text-3); }
+button:active { transform: scale(.97); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--text-2); margin-bottom: 8px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 
+/* header */
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding-top: 32px; }
+.top > div { min-width: 0; }
+.gh { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 13.5px; font-weight: 500; transition: border-color 150ms; }
+.gh:hover { border-color: var(--text-3); }
+.gh svg { width: 16px; height: 16px; fill: currentColor; }
+
 /* timeline */
-.tl { position: sticky; top: 0; z-index: 10; margin: 20px -16px 0; padding: 12px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-.tl-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.tl-date { flex: 1 1 auto; min-width: 0; font-weight: 650; font-size: 16px; }
-.tl-date span { font-weight: 400; color: var(--text-3); font-size: 13px; margin-left: 6px; }
-.play { min-width: 80px; font-weight: 600; }
+.tl { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; margin-top: 20px; padding: 12px 0; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.tl-row { display: flex; align-items: center; gap: 10px; }
+.tl-date { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 17px; }
+.tl-date span { font-weight: 400; color: var(--text-3); font-size: 13px; margin-left: 8px; }
+.play { min-width: 84px; font-weight: 600; }
 input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--accent); }
 
 /* numbers */
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
-.stat { padding: 0 16px; border-left: 1px solid var(--line); min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stat { padding: 0 20px; border-left: 1px solid var(--line); min-width: 0; }
 .stat:first-child { border-left: 0; padding-left: 0; }
-.stat b { display: block; font-size: 26px; font-weight: 650; letter-spacing: -0.02em; }
+.stat b { display: block; font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; }
 .stat span { font-size: 13px; color: var(--text-2); }
 
 /* funnel */
+.funnel-panel { padding: 22px 20px 18px; }
 #funnel { display: block; max-width: 100%; overflow: visible; }
-.f-name { fill: var(--text-2); font-size: 13px; }
-.f-count { fill: var(--text); font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.f-delta { fill: var(--text-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.f-name { fill: var(--text-2); font-size: 13px; font-weight: 500; }
+.f-count { fill: var(--text); font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.f-count.sm { font-size: 17px; }
+.f-delta { fill: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
 .f-delta.up { fill: var(--good); }
 .f-track { fill: var(--surface-2); }
-.f-neck { opacity: .16; }
+.f-neck { opacity: .18; }
 .f-box { fill: var(--surface); stroke: var(--line); }
 .f-chip rect { fill: var(--surface); stroke: var(--line); }
-.f-chip text { fill: var(--text-2); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-.flow { fill: none; stroke-linecap: round; opacity: .45; transition: opacity 300ms; }
-.flow-label { font-size: 11px; fill: var(--text-2); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; }
+.f-chip text { fill: var(--text-2); font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.f-chip { transition: opacity 250ms; }
+.flow { fill: none; stroke-linecap: round; opacity: .42; }
+.dot { pointer-events: none; }
+.funnel-note { font-size: 12.5px; color: var(--text-3); margin: 10px 0 0; }
 
 /* charts */
 .chart svg { display: block; max-width: 100%; overflow: visible; }
 .axis text { fill: var(--text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
 .gridline { stroke: var(--grid); }
 .we-band { fill: var(--weekend); }
-.sel-band { fill: var(--accent); opacity: .14; transition: transform 300ms ease; }
+.sel-band { fill: var(--accent); opacity: .13; transition: transform 300ms ease; }
 .bar-hit { fill: transparent; cursor: pointer; }
 .cap-line { fill: none; stroke: var(--text-2); stroke-width: 2; stroke-dasharray: 4 3; }
-.tip { position: fixed; pointer-events: none; z-index: 60; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; box-shadow: 0 6px 20px rgb(0 0 0 / .12); min-width: 160px; opacity: 0; transition: opacity 120ms; }
+.hbar { transform-box: fill-box; transform-origin: bottom; animation: grow 420ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes grow { from { transform: scaleY(0); } }
+.tip { position: fixed; pointer-events: none; z-index: 60; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; box-shadow: 0 8px 24px rgb(20 30 50 / .12); min-width: 160px; opacity: 0; transition: opacity 120ms; }
 .tip b { display: block; margin-bottom: 4px; }
 .tip .r { display: flex; justify-content: space-between; gap: 12px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.two > * { min-width: 0; margin-top: 16px; }
 
 /* rules + email */
 .rules { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
 .rules div { border-left: 2px solid var(--line); padding-left: 10px; font-size: 13px; color: var(--text-2); min-width: 0; }
-.rules b { display: block; color: var(--text); font-size: 14px; }
+.rules b { display: block; color: var(--text); font-size: 13.5px; font-weight: 600; }
 .email { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.email-h { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--text-2); }
-.email-h b { display: block; color: var(--text); font-size: 15px; margin-bottom: 2px; }
-.email pre { margin: 0; padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.55 ui-sans-serif, system-ui, sans-serif; }
+.email-h { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--text-2); background: var(--bg); }
+.email-h b { display: block; color: var(--text); font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.email pre { margin: 0; padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.6 var(--sans); }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .tabs button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .empty { color: var(--text-3); font-size: 14px; }
+.foot { font-size: 12.5px; color: var(--text-3); margin-top: 24px; }
+.foot a { color: var(--text-2); }
 
-@media (max-width: 720px) {
-  .stat b { font-size: 21px; }
-  .stat { padding: 0 10px; }
+@media (max-width: 860px) {
+  .two { grid-template-columns: 1fr; }
   .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tl-date span { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0ms !important; } }
+@media (max-width: 560px) {
+  .stat b { font-size: 22px; }
+  .stat { padding: 0 10px; }
+  .tl-date span { display: none; }
+  .funnel-panel { padding: 16px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>10,000 prospects · 4 emails each · 50 mailboxes</h1>
-  <p class="sub">One full run of the engine. Nothing was really sent: a mock provider decides bounces and replies.</p>
+  <header class="top">
+    <div>
+      <h1>10,000 prospects · 4 emails each · 50 mailboxes</h1>
+      <p class="sub">One full run of the Mnemio outreach engine, day by day. Nothing was really sent: a mock provider decides bounces and replies.</p>
+    </div>
+    <a class="gh" href="https://github.com/rdeepak-711/mnemio-takehome" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View the code on GitHub
+    </a>
+  </header>
 
   <div class="tl">
     <div class="tl-row">
@@ -126,39 +149,44 @@ input[type=range] { width: 100%; margin: 10px 0 0; accent-color: var(--accent); 
   </div>
 
   <div class="panel stats">
-    <div class="stat"><b class="num" id="s-sent"></b><span>emails sent</span></div>
-    <div class="stat"><b class="num" id="s-cap"></b><span>of mailbox limit used</span></div>
-    <div class="stat"><b class="num" id="s-active"></b><span>still in sequence</span></div>
+    <div class="stat"><b class="num" id="s-sent">0</b><span>emails sent</span></div>
+    <div class="stat"><b class="num" id="s-cap">0%</b><span>of mailbox limit used</span></div>
+    <div class="stat"><b class="num" id="s-active">0</b><span>still in sequence</span></div>
   </div>
 
-  <section class="panel" aria-labelledby="h-f">
+  <section class="panel funnel-panel" aria-labelledby="h-f">
     <h2 id="h-f">Where everyone is at the end of the day</h2>
-    <svg id="funnel" role="img" aria-label="Funnel of prospect statuses"></svg>
+    <svg id="funnel" role="img" aria-label="Funnel of prospect statuses for the selected day"></svg>
+    <p class="funnel-note">Bar size = share of all 10,000. Arrows and lines carry the people who moved that day; the dots only show direction.</p>
   </section>
 
-  <section class="panel chart" aria-labelledby="h-d">
-    <h2 id="h-d">Emails per day</h2>
-    <div class="legend"><span><i class="swatch" style="background:var(--c-first)"></i>First email</span><span><i class="swatch" style="background:var(--c-follow)"></i>Follow-ups</span><span><svg width="18" height="10" aria-hidden="true"><line x1="0" x2="18" y1="5" y2="5" class="cap-line"/></svg>Mailbox limit</span></div>
-    <div id="daysChart"></div>
-  </section>
+  <div class="two">
+    <section class="panel chart" aria-labelledby="h-d">
+      <h2 id="h-d">Emails per day</h2>
+      <div class="legend"><span><i class="swatch" style="background:var(--c-first)"></i>First email</span><span><i class="swatch" style="background:var(--c-follow)"></i>Follow-ups</span><span><svg width="18" height="10" aria-hidden="true"><line x1="0" x2="18" y1="5" y2="5" class="cap-line"/></svg>Mailbox limit</span></div>
+      <div id="daysChart"></div>
+    </section>
+    <section class="panel chart" aria-labelledby="h-h">
+      <h2 id="h-h">The selected day, hour by hour (UTC)</h2>
+      <div class="legend"><span><i class="swatch" style="background:var(--c-first)"></i>Delivered</span><span><i class="swatch" style="background:var(--st-bounced)"></i>Bounced</span></div>
+      <div id="hourChart"></div>
+    </section>
+  </div>
 
-  <section class="panel chart" aria-labelledby="h-h">
-    <h2 id="h-h">The selected day, hour by hour (UTC)</h2>
-    <div class="legend"><span><i class="swatch" style="background:var(--c-first)"></i>Delivered</span><span><i class="swatch" style="background:var(--st-bounced)"></i>Bounced</span></div>
-    <div id="hourChart"></div>
-    <div class="rules">
-      <div><b>Warm-up</b>each mailbox 20 a day, +10 daily, up to 80</div>
-      <div><b>Pacing</b>at most ⅛ of the daily limit per hour</div>
-      <div><b>Window</b>9:00–17:00 in the prospect's timezone, weekdays</div>
-      <div><b>Safety</b>10 a day per company · pause on &gt;10% bounces</div>
-    </div>
-  </section>
+  <div class="panel rules" style="margin-top:16px">
+    <div><b>Warm-up</b>each mailbox 20 a day, +10 daily, up to 80</div>
+    <div><b>Pacing</b>at most ⅛ of the daily limit per hour</div>
+    <div><b>Window</b>9:00–17:00 in the prospect's timezone, weekdays</div>
+    <div><b>Safety</b>10 a day per company · pause on &gt;10% bounces</div>
+  </div>
 
   <section class="panel" aria-labelledby="h-e">
     <h2 id="h-e">An email sent this day</h2>
     <div class="tabs" id="tabs"></div>
     <div id="email"></div>
   </section>
+
+  <p class="foot">Data: one <span class="mono">npm run full-run</span> on 10,000 seeded prospects with a live OpenRouter key (free models), exported from Postgres. Code: <a href="https://github.com/rdeepak-711/mnemio-takehome" target="_blank" rel="noopener">github.com/rdeepak-711/mnemio-takehome</a></p>
 </div>
 <div class="tip" id="tip" role="status"></div>
 
@@ -177,7 +205,9 @@ const ease = (t) => 1 - Math.pow(1 - t, 3);
 const TOTAL = 10000;
 const IN = [['new', 'Not emailed yet', '--st-new'], ['first_sent', 'First email', '--st-first'], ['follow_up_1_sent', 'Follow-up 1', '--st-fu1'], ['follow_up_2_sent', 'Follow-up 2', '--st-fu2'], ['follow_up_3_sent', 'Follow-up 3', '--st-fu3']];
 const OUT = [['replied', 'Replied', '--st-replied'], ['bounced', 'Bounced', '--st-bounced'], ['unsubscribed', 'Unsubscribed', '--st-unsub'], ['deactivated', 'No reply, stopped', '--st-deact']];
-const COLOR = Object.fromEntries([...IN, ...OUT].map((s) => [s[0], s[2]]));
+const ALL = [...IN, ...OUT];
+const COLOR = Object.fromEntries(ALL.map((s) => [s[0], s[2]]));
+const NAME = Object.fromEntries(ALL.map((s) => [s[0], s[1]]));
 const STEP = { first: 'First email', follow_up_1: 'Follow-up 1', follow_up_2: 'Follow-up 2', follow_up_3: 'Follow-up 3' };
 
 const days = D.perDay, last = days.length - 1;
@@ -187,7 +217,7 @@ const longDate = (k) => dateOf(k).toLocaleDateString('en-GB', { weekday: 'short'
 const shortDate = (k) => dateOf(k).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const isWeekend = (k) => [0, 6].includes(dateOf(k).getUTCDay());
 
-/* tooltip */
+/* ---------- tooltip ---------- */
 const tip = $('tip');
 function showTip(e, html) {
   tip.innerHTML = html; tip.style.opacity = 1;
@@ -200,15 +230,15 @@ function showTip(e, html) {
 const hideTip = () => { tip.style.opacity = 0; };
 const row = (name, v) => `<div class="r"><span>${esc(name)}</span><span class="num">${fmt(v)}</span></div>`;
 
-/* svg */
+/* ---------- svg helpers ---------- */
 const NS = 'http://www.w3.org/2000/svg';
 const el = (tag, a, parent) => { const n = document.createElementNS(NS, tag); for (const k in a) n.setAttribute(k, a[k]); if (parent) parent.appendChild(n); return n; };
 const niceMax = (v) => { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)), m = v / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; };
 
-/* stacked bars on one axis, drawn at the container's pixel width */
+/* ---------- stacked bars, one axis, drawn at the container's pixel width ---------- */
 function bars(host, o) {
   host.innerHTML = '';
-  const W = Math.max(280, Math.floor(host.clientWidth) || 640), H = o.height, L = 44, R = 6, T = 8, B = 24;
+  const W = Math.max(260, Math.floor(host.clientWidth) || 600), H = o.height, L = 44, R = 6, T = 8, B = 24;
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': o.label }, host);
   const totals = o.rows.map((r) => o.series.reduce((a, s) => a + (r[s.key] || 0), 0));
   const max = niceMax(Math.max(...totals, ...(o.line || [0])));
@@ -220,10 +250,11 @@ function bars(host, o) {
   const band = o.select ? el('rect', { class: 'sel-band', x: L, y: T, width: bw, height: H - T - B, style: 'transform:translateX(-9999px)' }, svg) : null;
   o.rows.forEach((r, i) => {
     let acc = 0; const x = L + i * bw + gap / 2, w = Math.max(1, bw - gap);
+    const col = el('g', o.grow ? { class: 'hbar', style: `animation-delay:${i * 14}ms` } : {}, svg);
     o.series.forEach((s) => {
       const v = r[s.key] || 0; if (!v) return;
       const y0 = y(acc), y1 = y(acc + v);
-      el('rect', { x, y: y1, width: w, height: Math.max(0, y0 - y1 - (acc ? 1 : 0)), rx: acc + v === totals[i] ? Math.min(3, w / 2) : 0, fill: `var(${s.color})` }, svg);
+      el('rect', { x, y: y1, width: w, height: Math.max(0, y0 - y1 - (acc ? 1 : 0)), rx: acc + v === totals[i] ? Math.min(3, w / 2) : 0, fill: `var(${s.color})` }, col);
       acc += v;
     });
     const t = o.tick(i); if (t) el('text', { x: x + w / 2, y: H - 6, 'text-anchor': 'middle' }, g).textContent = t;
@@ -238,106 +269,156 @@ function bars(host, o) {
   return { select(i) { if (band) band.style.transform = `translateX(${i * bw}px)`; } };
 }
 
-/* funnel */
+/* ---------- the funnel ----------
+   Wide: the five sequence steps run left to right as bars sized by headcount, joined by necks that carry the day's
+   progressions; the four outcomes sit in a row underneath, fed by lines from every step that lost people that day.
+   Narrow: the steps stack top to bottom and the outcomes form a 2×2 grid. */
 const fsvg = $('funnel');
-const F = { nodes: {}, flows: {}, counts: null, target: null, moves: {}, delta: {}, raf: 0 };
+const F = { counts: null, target: null, moves: {}, delta: {}, raf: 0 };
+
 function buildFunnel() {
   fsvg.innerHTML = '';
-  const W = Math.max(300, Math.floor(fsvg.parentElement.clientWidth - 38));
-  const wide = W >= 700;
-  const labelW = wide ? 120 : 104, colX = labelW + 14, colW = wide ? Math.min(380, W * 0.4) : W - colX, cx = colX + colW / 2;
-  const h = wide ? 40 : 34, gap = 28;
-  const stages = IN.map((s, i) => ({ y: i * (h + gap), h }));
-  const pipeH = stages[4].y + h;
-  let bins;
-  if (wide) { const bw = Math.min(250, W * 0.27), bh = 52, bg = (pipeH - 4 * bh) / 3; bins = OUT.map((s, i) => ({ x: W - bw, y: i * (bh + bg), w: bw, h: bh })); }
-  else { const by = pipeH + 24, bw = (W - 10) / 2; bins = OUT.map((s, i) => ({ x: (i % 2) * (bw + 10), y: by + Math.floor(i / 2) * 62, w: bw, h: 54 })); }
-  const H = wide ? pipeH + 4 : bins[3].y + bins[3].h + 4;
-  Object.assign(F, { W, wide, colX, colW, cx, stages, bins });
+  const W = Math.max(300, Math.floor(fsvg.parentElement.clientWidth - 40));
+  const wide = W >= 640;
+  let H;
+  F.W = W; F.wide = wide;
+  if (wide) {
+    const step = W / 5, bw = Math.min(150, step * 0.5), top = 78, maxH = Math.min(260, W * 0.2), mid = top + maxH / 2;
+    const boxY = top + maxH + 96, boxH = 78, gap = 14, boxW = (W - 3 * gap) / 4;
+    F.cols = IN.map((s, i) => ({ cx: step * (i + 0.5), bw }));
+    F.boxes = OUT.map((s, i) => ({ x: i * (boxW + gap), y: boxY, w: boxW, h: boxH }));
+    Object.assign(F, { top, maxH, mid });
+    H = boxY + boxH + 4;
+  } else {
+    const labelW = 104, colX = labelW + 14, colW = W - colX, cx = colX + colW / 2, h = 34, gap = 30;
+    F.rows = IN.map((s, i) => ({ y: i * (h + gap), h }));
+    const by = F.rows[4].y + h + 24, bw = (W - 10) / 2;
+    F.boxes = OUT.map((s, i) => ({ x: (i % 2) * (bw + 10), y: by + Math.floor(i / 2) * 64, w: bw, h: 56 }));
+    Object.assign(F, { labelW, colX, colW, cx });
+    H = F.boxes[3].y + F.boxes[3].h + 4;
+  }
   fsvg.setAttribute('viewBox', `0 0 ${W} ${H}`); fsvg.setAttribute('width', W); fsvg.setAttribute('height', H);
-  const gN = el('g', {}, fsvg), gF = el('g', {}, fsvg), gS = el('g', {}, fsvg), gC = el('g', {}, fsvg);
-  F.necks = [0, 1, 2, 3].map((i) => el('path', { class: 'f-neck', fill: `var(${IN[i + 1][2]})` }, gN));
-  F.chips = [0, 1, 2, 3].map((i) => { const g = el('g', { class: 'f-chip' }, gC); return { g, r: el('rect', { height: 18, rx: 9 }, g), t: el('text', { 'text-anchor': 'middle' }, g), key: IN[i][0] + '>' + IN[i + 1][0] }; });
-  F.nodes = {}; F.flows = {};
+  const gFlow = el('g', {}, fsvg), gNeck = el('g', {}, fsvg), gBar = el('g', {}, fsvg), gDot = el('g', {}, fsvg), gChip = el('g', {}, fsvg);
+  F.gDot = gDot;
+  F.necks = [0, 1, 2, 3].map((i) => el('path', { class: 'f-neck', fill: `var(${IN[i + 1][2]})` }, gNeck));
+  F.chips = [0, 1, 2, 3].map((i) => { const g = el('g', { class: 'f-chip', style: 'opacity:0' }, gChip); return { g, r: el('rect', { height: 20, rx: 10 }, g), t: el('text', { 'text-anchor': 'middle' }, g), key: IN[i][0] + '>' + IN[i + 1][0] }; });
+  F.nodes = {};
   IN.forEach(([k, name, color], i) => {
-    const st = stages[i];
-    el('rect', { class: 'f-track', x: colX, y: st.y, width: colW, height: st.h, rx: 6 }, gS);
-    const bar = el('rect', { y: st.y, height: st.h, rx: 6, fill: `var(${color})` }, gS);
-    el('text', { class: 'f-name', x: labelW, y: st.y + 14, 'text-anchor': 'end' }, gS).textContent = name;
-    const count = el('text', { class: 'f-count', x: labelW, y: st.y + 32, 'text-anchor': 'end' }, gS);
-    const delta = el('text', { class: 'f-delta', x: wide ? 0 : colX + 6, y: st.y + st.h / 2 + 4 }, gS);
-    F.nodes[k] = { bar, count, delta, i };
+    const n = (F.nodes[k] = { i });
+    if (wide) {
+      const c = F.cols[i];
+      el('rect', { class: 'f-track', x: c.cx - c.bw / 2, y: F.top, width: c.bw, height: F.maxH, rx: 8 }, gBar);
+      n.bar = el('rect', { rx: 8, fill: `var(${color})`, x: c.cx - c.bw / 2, width: c.bw }, gBar);
+      el('text', { class: 'f-name', x: c.cx, y: 14, 'text-anchor': 'middle' }, gBar).textContent = name;
+      n.count = el('text', { class: 'f-count', x: c.cx, y: 42, 'text-anchor': 'middle' }, gBar);
+      n.delta = el('text', { class: 'f-delta', x: c.cx, y: 61, 'text-anchor': 'middle' }, gBar);
+    } else {
+      const r = F.rows[i];
+      el('rect', { class: 'f-track', x: F.colX, y: r.y, width: F.colW, height: r.h, rx: 6 }, gBar);
+      n.bar = el('rect', { rx: 6, fill: `var(${color})`, y: r.y, height: r.h }, gBar);
+      el('text', { class: 'f-name', x: F.labelW, y: r.y + 13, 'text-anchor': 'end' }, gBar).textContent = name;
+      n.count = el('text', { class: 'f-count sm', x: F.labelW, y: r.y + 32, 'text-anchor': 'end' }, gBar);
+      n.delta = el('text', { class: 'f-delta', x: F.colX + 6, y: r.y + r.h / 2 + 4 }, gBar);
+    }
   });
   OUT.forEach(([k, name, color], i) => {
-    const b = bins[i];
-    el('rect', { class: 'f-box', x: b.x, y: b.y, width: b.w, height: b.h, rx: 8 }, gS);
-    el('rect', { x: b.x, y: b.y, width: 4, height: b.h, rx: 2, fill: `var(${color})` }, gS);
-    el('text', { class: 'f-name', x: b.x + 14, y: b.y + 19 }, gS).textContent = name;
-    const count = el('text', { class: 'f-count', x: b.x + 14, y: b.y + 40 }, gS);
-    const delta = el('text', { class: 'f-delta', x: b.x + b.w - 10, y: b.y + 40, 'text-anchor': 'end' }, gS);
-    F.nodes[k] = { count, delta, b };
+    const b = F.boxes[i];
+    el('rect', { class: 'f-box', x: b.x, y: b.y, width: b.w, height: b.h, rx: 10 }, gBar);
+    el('rect', { x: b.x, y: b.y, width: 4, height: b.h, rx: 2, fill: `var(${color})` }, gBar);
+    el('text', { class: 'f-name', x: b.x + 16, y: b.y + (wide ? 24 : 20) }, gBar).textContent = name;
+    const n = (F.nodes[k] = { b });
+    n.count = el('text', { class: wide ? 'f-count' : 'f-count sm', x: b.x + 16, y: b.y + (wide ? 54 : 43) }, gBar);
+    n.delta = el('text', { class: 'f-delta', x: b.x + b.w - 12, y: b.y + (wide ? 54 : 43), 'text-anchor': 'end' }, gBar);
+    if (wide) { n.fill = el('rect', { x: b.x + 4, y: b.y + b.h - 4, height: 3, rx: 1.5, fill: `var(${color})`, opacity: 0.8 }, gBar); }
   });
+  // one line per step → outcome pair that ever carries people; it draws itself in on days it does
+  F.flows = {};
   if (wide) {
-    // a line for every exit from the sequence that happens on some day; it fades in on days it carries people
     const keys = new Set(days.flatMap((p) => p.moves.map((m) => m.from + '>' + m.to)));
     for (const key of keys) {
       const [from, to] = key.split('>');
-      if (!(from in F.nodes) || !F.nodes[to].b || F.nodes[from].b) continue;
-      F.flows[key] = { from, to, path: el('path', { class: 'flow', stroke: `var(${COLOR[to]})` }, gF), label: el('text', { class: 'flow-label', 'text-anchor': 'middle' }, gF) };
+      if (F.nodes[from]?.i === undefined || !F.nodes[to]?.b) continue;
+      const path = el('path', { class: 'flow', stroke: `var(${COLOR[to]})`, pathLength: 1, 'stroke-dasharray': '1 1', 'stroke-dashoffset': 1 }, gFlow);
+      const title = el('title', {}, path);
+      F.flows[key] = { from, to, path, title, n: 0 };
     }
   }
+  F.counts = null;
 }
-const barW = (n) => (F.colW * n) / TOTAL;
+
+const share = (v) => v / TOTAL;
+function barGeom(k, v) {
+  const n = F.nodes[k];
+  if (F.wide) { const c = F.cols[n.i], h = Math.max(v >= 0.5 ? 3 : 0, F.maxH * share(v)); return { x: c.cx - c.bw / 2, y: F.mid - h / 2, w: c.bw, h }; }
+  const r = F.rows[n.i], w = Math.max(v >= 0.5 ? 3 : 0, F.colW * share(v));
+  return { x: F.cx - w / 2, y: r.y, w, h: r.h };
+}
+function flowD(f, c) {
+  const g = barGeom(f.from, Math.max(c[f.from] || 0, 0)), b = F.nodes[f.to].b, i = F.nodes[f.from].i;
+  const sx = g.x + g.w / 2 + (i - 2) * 6, sy = F.top + F.maxH + 2; // lines leave from the bottom edge of the step's column
+  const ex = b.x + b.w * (0.2 + 0.15 * i), ey = b.y - 2;
+  return `M${sx},${sy} C${sx},${sy + (ey - sy) * 0.55} ${ex},${ey - (ey - sy) * 0.45} ${ex},${ey}`;
+}
+
 function drawFunnel(c) {
   F.counts = c;
-  IN.forEach(([k], i) => {
-    const n = F.nodes[k], v = c[k] || 0, w = Math.max(v >= 0.5 ? 3 : 0, barW(v)), dv = F.delta[k] || 0;
-    n.bar.setAttribute('x', F.cx - w / 2); n.bar.setAttribute('width', w);
-    n.count.textContent = fmt(v);
-    n.delta.textContent = dv ? signed(dv) : '';
+  IN.forEach(([k]) => {
+    const n = F.nodes[k], g = barGeom(k, c[k] || 0), dv = F.delta[k] || 0;
+    n.bar.setAttribute('x', g.x); n.bar.setAttribute('y', g.y); n.bar.setAttribute('width', g.w); n.bar.setAttribute('height', g.h);
+    n.count.textContent = fmt(c[k] || 0);
+    n.delta.textContent = F.wide ? `${(100 * share(F.target[k])).toFixed(1)}%${dv ? ' · ' + signed(dv) + ' today' : ''}` : (dv ? signed(dv) : '');
     n.delta.setAttribute('class', 'f-delta' + (dv > 0 ? ' up' : ''));
-    if (F.wide) n.delta.setAttribute('x', F.cx + w / 2 + 8);
   });
   for (let i = 0; i < 4; i++) {
-    const a = F.stages[i], b = F.stages[i + 1];
-    const wa = Math.max(3, barW(c[IN[i][0]] || 0)), wb = Math.max(3, barW(c[IN[i + 1][0]] || 0)), y0 = a.y + a.h, y1 = b.y;
-    F.necks[i].setAttribute('d', `M${F.cx - wa / 2},${y0} L${F.cx + wa / 2},${y0} L${F.cx + wb / 2},${y1} L${F.cx - wb / 2},${y1} Z`);
+    const a = barGeom(IN[i][0], c[IN[i][0]] || 0), b = barGeom(IN[i + 1][0], c[IN[i + 1][0]] || 0);
+    let d, cxp, cyp;
+    if (F.wide) {
+      const ah = Math.max(3, a.h), bh = Math.max(3, b.h), ax = a.x + a.w, bx = b.x;
+      d = `M${ax},${F.mid - ah / 2} L${bx},${F.mid - bh / 2} L${bx},${F.mid + bh / 2} L${ax},${F.mid + ah / 2} Z`;
+      cxp = (ax + bx) / 2; cyp = F.mid;
+    } else {
+      const aw = Math.max(3, a.w), bw = Math.max(3, b.w), y0 = a.y + a.h, y1 = b.y;
+      d = `M${F.cx - aw / 2},${y0} L${F.cx + aw / 2},${y0} L${F.cx + bw / 2},${y1} L${F.cx - bw / 2},${y1} Z`;
+      cyp = (y0 + y1) / 2;
+    }
+    F.necks[i].setAttribute('d', d);
     const ch = F.chips[i], n = F.moves[ch.key] || 0;
-    if (ch.n !== n) { ch.n = n; ch.t.textContent = n ? `↓ ${fmt(n)}` : ''; ch.tw = n ? ch.t.getComputedTextLength() + 16 : 0; }
-    const x = F.wide ? F.cx : F.colX + F.colW - ch.tw / 2, cy = (y0 + y1) / 2;
-    ch.r.setAttribute('x', x - ch.tw / 2); ch.r.setAttribute('y', cy - 9); ch.r.setAttribute('width', ch.tw);
-    ch.t.setAttribute('x', x); ch.t.setAttribute('y', cy + 4);
+    if (ch.n !== n) { ch.n = n; ch.t.textContent = n ? (F.wide ? `→ ${fmt(n)}` : `↓ ${fmt(n)}`) : ''; ch.tw = n ? ch.t.getComputedTextLength() + 18 : 0; }
+    if (!F.wide) cxp = F.colX + F.colW - ch.tw / 2;
+    ch.r.setAttribute('x', cxp - ch.tw / 2); ch.r.setAttribute('y', cyp - 10); ch.r.setAttribute('width', ch.tw);
+    ch.t.setAttribute('x', cxp); ch.t.setAttribute('y', cyp + 4);
     ch.g.style.opacity = n ? 1 : 0;
   }
   OUT.forEach(([k]) => {
-    const n = F.nodes[k], dv = F.delta[k] || 0;
-    n.count.textContent = fmt(c[k] || 0);
-    n.delta.textContent = dv ? signed(dv) : '';
+    const n = F.nodes[k], dv = F.delta[k] || 0, v = c[k] || 0;
+    n.count.textContent = fmt(v);
+    n.delta.textContent = dv ? signed(dv) + (F.wide ? ' today' : '') : '';
     n.delta.setAttribute('class', 'f-delta' + (dv > 0 ? ' up' : ''));
+    if (n.fill) n.fill.setAttribute('width', Math.max(0, (n.b.w - 8) * share(v)));
   });
-  const used = [];
+  for (const key in F.flows) { const f = F.flows[key]; f.path.setAttribute('d', flowD(f, c)); }
+}
+
+// lines that carry people today draw themselves in; the rest fade away
+function updateFlows() {
   for (const key in F.flows) {
-    const f = F.flows[key], n = F.moves[key] || 0;
-    const st = F.stages[F.nodes[f.from].i], w = Math.max(3, barW(c[f.from] || 0)), b = F.nodes[f.to].b;
-    const ax = F.cx + w / 2 + 2, ay = st.y + st.h / 2, bx = b.x - 2, by = b.y + b.h / 2, mx = ax + (bx - ax) * 0.55;
-    f.path.setAttribute('d', `M${ax},${ay} C${mx},${ay} ${mx},${by} ${bx},${by}`);
-    f.path.setAttribute('stroke-width', n ? Math.min(10, 1.2 + Math.sqrt(n) * 0.28) : 0);
-    f.path.style.opacity = n ? '' : 0;
-    if (!n) { f.label.textContent = ''; continue; }
-    const pt = f.path.getPointAtLength(f.path.getTotalLength() * 0.82);
-    let ly = pt.y + 4;
-    for (let t = 0; t < 8 && used.some((u) => Math.abs(u.y - ly) < 12 && Math.abs(u.x - pt.x) < 36); t++) ly += 12;
-    used.push({ x: pt.x, y: ly });
-    f.label.setAttribute('x', pt.x); f.label.setAttribute('y', ly); f.label.textContent = fmt(n);
+    const f = F.flows[key], n = F.moves[key] || 0, was = f.n;
+    f.n = n;
+    f.path.setAttribute('stroke-width', n ? Math.min(12, 1.5 + Math.sqrt(n) * 0.32) : 0.001);
+    f.title.textContent = `${NAME[f.from]} → ${NAME[f.to]}: ${fmt(n)} today`;
+    if (!n) { f.path.setAttribute('stroke-dashoffset', 1); continue; }
+    f.path.setAttribute('stroke-dashoffset', 0);
+    if (!reduced() && !was && f.path.animate) f.path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 700, easing: 'cubic-bezier(.2,.7,.2,1)' });
   }
 }
+
 function tween(target) {
   cancelAnimationFrame(F.raf);
-  const from = F.counts;
-  if (reduced() || !from) { drawFunnel(target); return; }
-  const t0 = performance.now();
+  const from = F.counts || Object.fromEntries(ALL.map(([k]) => [k, 0]));
+  if (reduced()) { drawFunnel(target); return; }
+  const t0 = performance.now(), dur = F.counts ? 600 : 1000;
   const frame = (t) => {
-    const k = ease(Math.min(1, (t - t0) / 500)), c = {};
+    const k = ease(Math.min(1, (t - t0) / dur)), c = {};
     for (const key in target) c[key] = from[key] + (target[key] - from[key]) * k;
     drawFunnel(c);
     if (k < 1) F.raf = requestAnimationFrame(frame);
@@ -345,29 +426,74 @@ function tween(target) {
   F.raf = requestAnimationFrame(frame);
 }
 
-/* charts */
+// travelling dots show direction only: three per neck with people moving on, two per active outcome line
+let dotRaf = 0;
+function runDots() {
+  cancelAnimationFrame(dotRaf);
+  F.gDot.innerHTML = '';
+  if (reduced()) return;
+  const items = [];
+  for (let i = 0; i < 4; i++) if (F.moves[F.chips[i].key]) for (let j = 0; j < 3; j++) items.push({ neck: i, j, n: 3, c: el('circle', { class: 'dot', r: 3, fill: `var(${IN[i + 1][2]})` }, F.gDot) });
+  for (const key in F.flows) if (F.moves[key]) for (let j = 0; j < 2; j++) items.push({ f: F.flows[key], j, n: 2, c: el('circle', { class: 'dot', r: 2.8, fill: `var(${COLOR[F.flows[key].to]})` }, F.gDot) });
+  const t0 = performance.now();
+  const frame = (t) => {
+    const c = F.counts || {};
+    for (const it of items) {
+      const p = ((t - t0) / 1800 + it.j / it.n) % 1;
+      let x, y;
+      if (it.f) { const L = it.f.path.getTotalLength(), q = it.f.path.getPointAtLength(L * p); x = q.x; y = q.y; }
+      else {
+        const a = barGeom(IN[it.neck][0], c[IN[it.neck][0]] || 0), b = barGeom(IN[it.neck + 1][0], c[IN[it.neck + 1][0]] || 0);
+        if (F.wide) { x = a.x + a.w + (b.x - a.x - a.w) * p; y = F.mid + (it.j - 1) * Math.min(14, Math.max(a.h, 6) / 4); }
+        else { x = F.cx + (it.j - 1) * 14; y = a.y + a.h + (b.y - a.y - a.h) * p; }
+      }
+      it.c.setAttribute('cx', x); it.c.setAttribute('cy', y);
+      it.c.setAttribute('opacity', (Math.sin(Math.PI * p) * 0.95).toFixed(2));
+    }
+    dotRaf = requestAnimationFrame(frame);
+  };
+  dotRaf = requestAnimationFrame(frame);
+}
+
+/* ---------- numbers count up ---------- */
+const shown = {};
+function countTo(id, to, format) {
+  const node = $(id), from = shown[id] ?? 0;
+  shown[id] = to;
+  if (reduced() || from === to) { node.textContent = format(to); return; }
+  const t0 = performance.now();
+  const step = (t) => {
+    if (shown[id] !== to) return;
+    const k = ease(Math.min(1, (t - t0) / 500));
+    node.textContent = format(from + (to - from) * k);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* ---------- charts ---------- */
 const pick = (i) => { stop(); setDay(i); };
 let daysChart;
-function buildDays() {
+function buildDays(grow) {
   daysChart = bars($('daysChart'), {
     rows: days.map((p) => { const t = tl[p.day] || {}; return { first: t.firstEmails || 0, follow: t.followUps || 0 }; }),
     series: [{ key: 'first', name: 'First email', color: '--c-first' }, { key: 'follow', name: 'Follow-ups', color: '--c-follow' }],
     line: days.map((p) => p.delivery.totals.capacity),
-    label: 'Emails sent per day against the mailboxes\' combined daily limit', height: 220, select: true,
+    label: 'Emails sent per day against the mailboxes\' combined daily limit', height: 220, select: true, grow,
     title: (i) => longDate(days[i].day), tick: (i) => (i % 7 === 0 ? shortDate(days[i].day) : ''), weekend: (i) => isWeekend(days[i].day), onPick: pick,
   });
 }
-function hours(p) {
+function hours(p, grow) {
   const narrow = $('hourChart').clientWidth < 520;
   bars($('hourChart'), {
     rows: p.delivery.hours.map((h) => ({ ok: h[0] - h[1], bounced: h[1] })),
     series: [{ key: 'ok', name: 'Delivered', color: '--c-first' }, { key: 'bounced', name: 'Bounced', color: '--st-bounced' }],
-    label: 'Emails per UTC hour on the selected day', height: 170,
+    label: 'Emails per UTC hour on the selected day', height: 220, grow,
     title: (i) => `${String(i).padStart(2, '0')}:00 UTC`, tick: (i) => (i % (narrow ? 6 : 3) === 0 ? String(i).padStart(2, '0') + ':00' : ''),
   });
 }
 
-/* example email */
+/* ---------- example email ---------- */
 let step = null;
 function email(p) {
   const list = p.emails;
@@ -377,28 +503,30 @@ function email(p) {
   const e = list.find((x) => x.step === step);
   const body = e.body.split('\n--\n')[0];
   const at = new Date(e.sentAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: e.timezone });
-  $('email').innerHTML = `<div class="email"><div class="email-h"><b>${esc(e.subject)}</b>From <span class="num">${esc(e.mailbox)}</span> to ${esc(e.firstName)} at ${esc(e.company)} · ${at} their time${e.outcome === 'bounced' ? ' · <span style="color:var(--st-bounced)">bounced</span>' : ''}</div><pre>${esc(body)}</pre></div>`;
+  $('email').innerHTML = `<div class="email"><div class="email-h"><b>${esc(e.subject)}</b>From <span class="mono">${esc(e.mailbox)}</span> to ${esc(e.firstName)} at ${esc(e.company)} · ${at} their time${e.outcome === 'bounced' ? ' · <span style="color:var(--st-bounced)">bounced</span>' : ''}</div><pre>${esc(body)}</pre></div>`;
 }
 $('tabs').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (b) { step = b.dataset.s; email(days[current]); } });
 
-/* day */
+/* ---------- the selected day ---------- */
 const range = $('day'); range.max = last;
 let current = -1;
-function setDay(i) {
+function setDay(i, first) {
   i = Math.max(0, Math.min(last, i)); range.value = i;
   if (i === current) return;
   current = i; hideTip();
   const p = days[i], t = p.delivery.totals, sent = p.steps.reduce((a, s) => a + s.n, 0);
   $('daylabel').innerHTML = `${longDate(p.day)}<span>day ${i + 1} of ${days.length}${isWeekend(p.day) ? ' · weekend' : ''}</span>`;
-  $('s-sent').textContent = fmt(sent);
-  $('s-cap').textContent = t.capacity ? Math.round((100 * t.emails) / t.capacity) + '%' : '–';
-  $('s-active').textContent = fmt(p.summary.active);
+  countTo('s-sent', sent, fmt);
+  countTo('s-cap', t.capacity ? (100 * t.emails) / t.capacity : 0, (v) => Math.round(v) + '%');
+  countTo('s-active', p.summary.active, fmt);
   F.moves = {}; F.delta = {};
   for (const m of p.moves) { const k = m.from + '>' + m.to; F.moves[k] = (F.moves[k] || 0) + m.count; F.delta[m.from] = (F.delta[m.from] || 0) - m.count; F.delta[m.to] = (F.delta[m.to] || 0) + m.count; }
-  F.target = Object.fromEntries([...IN, ...OUT].map(([k]) => [k, p.summary.statuses[k] || 0]));
+  F.target = Object.fromEntries(ALL.map(([k]) => [k, p.summary.statuses[k] || 0]));
   tween(F.target);
+  updateFlows();
+  runDots();
   daysChart.select(i);
-  hours(p);
+  hours(p, true);
   email(p);
   try { history.replaceState(null, '', '#' + p.day); } catch {}
 }
@@ -407,29 +535,31 @@ $('prev').addEventListener('click', () => pick(current - 1));
 $('next').addEventListener('click', () => pick(current + 1));
 let timer = null;
 function stop() { clearTimeout(timer); timer = null; $('play').textContent = '▶ Play'; }
-function tick() { setDay(current + 1); if (current >= last) stop(); else timer = setTimeout(tick, 650); }
+function tick() { setDay(current + 1); if (current >= last) stop(); else timer = setTimeout(tick, 900); }
 $('play').addEventListener('click', () => {
   if (timer) { stop(); return; }
   if (current >= last) setDay(0);
   $('play').textContent = '❚❚ Pause';
-  timer = setTimeout(tick, 650);
+  timer = setTimeout(tick, 900);
 });
 document.addEventListener('keydown', (e) => {
-  if (e.target.closest('input, button')) return;
+  if (e.target.closest('input, button, a')) return;
   if (e.key === 'ArrowLeft') pick(current - 1);
   if (e.key === 'ArrowRight') pick(current + 1);
 });
 
-buildDays(); buildFunnel();
+buildDays(true); buildFunnel();
 const h = days.findIndex((p) => '#' + p.day === location.hash);
-setDay(h >= 0 ? h : 7);
+setDay(h >= 0 ? h : 7, true);
 let lastW = innerWidth, rz;
 addEventListener('resize', () => {
   clearTimeout(rz);
   rz = setTimeout(() => {
     if (innerWidth === lastW) return; lastW = innerWidth;
-    buildDays(); buildFunnel(); cancelAnimationFrame(F.raf); drawFunnel(F.target);
-    daysChart.select(current); hours(days[current]);
+    buildDays(false); buildFunnel(); cancelAnimationFrame(F.raf); drawFunnel(F.target);
+    for (const k in F.flows) F.flows[k].n = 0;
+    updateFlows(); runDots();
+    daysChart.select(current); hours(days[current], false);
   }, 150);
 });
 })();

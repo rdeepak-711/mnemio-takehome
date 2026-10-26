@@ -557,6 +557,8 @@ Every meaningful choice, with what else was considered and what it costs. Supers
 
 **Considered:** a richer version with reply cards, AI accuracy, the confusion table, the 20 sequences, rule drawers and a methodology section (built and committed as f1880ef, then replaced the same day: Deepak found it "too much text and too much info"); the first version's tables per day (answered "how many" but not "who moved where").
 
+**Revised the same day:** light theme only and the funnel laid out left to right across the full width, with the outcomes underneath and a GitHub link, at Deepak's request, so the page can be shared by email.
+
 **Why:** the page exists to show the sending engine working; the AI and classifier numbers already live in the README and the dashboard.
 
 **Cost:** the page no longer shows replies or AI accuracy. Its correctness was checked by a headless-browser script outside the repo (every day's nine counts equal the export and sum to 10,000; controls; desktop light/dark and phone; no overflow).
