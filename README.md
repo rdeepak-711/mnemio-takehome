@@ -151,6 +151,16 @@ Final counts, the same in both runs:
 
 The 35,212 sends include 8,650 from the seed's history. The counts match because the mock decides each outcome from the seed and the email's key, so deliverability changes when an email goes out, not what happens to it. With deliverability on, the campaign takes 3 more simulated days: on day one the 50 new mailboxes are allowed 20 emails each, 1,000 in total. With pacing, no mailbox ever sent more than 10 emails in one UTC hour (80 without pacing).
 
+### With a live OpenRouter key
+
+The same command on a fresh scratch database with a key took 820.2 s: 678.3 s for the AI to write the 20 segment sequences once, then 140.8 s to advance the 43 days. It used 41 of the day's 45 free calls.
+
+- **Emails:** all 26,581 emails used the AI-written sequences, all from `recursive/flint-v1.0:free`.
+- **Replies:** the rules labelled 640 replies, all correct. The AI labelled 1,465, and 1,314 of those (89.7%) matched the mock's true label. The other 151 were held as `needs_review` rather than guessed wrong.
+- **Final counts:** 1,891 replied, 454 bounced, 503 unsubscribed and 7,152 deactivated. The reply rate (28.8%) and bounce rate (1.3%) are the same as without a key.
+
+[`docs/campaign-live-run.html`](docs/campaign-live-run.html) shows this run day by day. It has a slider, the funnel, sends and replies per day, and the real emails and replies with their labels. It opens straight from disk.
+
 ## 7. Trade-offs, limitations and what's next
 
 **Trade-offs taken on purpose:**
